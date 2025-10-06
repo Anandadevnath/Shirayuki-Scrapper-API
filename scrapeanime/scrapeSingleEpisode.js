@@ -7,6 +7,10 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 puppeteer.use(StealthPlugin());
 
+// Simple in-memory cache to avoid re-scraping the same episode repeatedly (useful on free tiers)
+const scrapeCache = new Map(); // key: episodeUrl, value: { expiresAt, result }
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
+
 // Retry wrapper for frame detachment and navigation errors
 async function withRetries(fn, maxRetries = 3, delayMs = 3000) {
     let lastError;
@@ -27,6 +31,15 @@ async function withRetries(fn, maxRetries = 3, delayMs = 3000) {
 }
 
 export const scrapeSingleEpisode = async (episodeUrl) => {
+    // return cached result quickly when available
+    const cached = scrapeCache.get(episodeUrl);
+    if (cached && cached.expiresAt > Date.now()) {
+        return {
+            ...cached.result,
+            extraction_time_seconds: 0.001, // near-instant from cache
+            cached: true
+        };
+    }
     const { executablePath } = await import('puppeteer');
     const browser = await puppeteer.launch({
         headless: 'new',
@@ -49,16 +62,19 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
     });
     
     const page = await browser.newPage();
-    
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    // shorten default timeouts to fail faster on the free tier
+    page.setDefaultNavigationTimeout(10000);
+    page.setDefaultTimeout(10000);
     
     try {
         await page.setRequestInterception(true);
         page.on('request', (req) => {
             const resourceType = req.resourceType();
             const url = req.url();
-            
-            if (['font', 'media', 'websocket', 'manifest'].includes(resourceType) ||
+
+            // Abort heavy or third-party resources to speed up page load on free tiers
+            if (['font', 'media', 'websocket', 'manifest', 'stylesheet', 'image'].includes(resourceType) ||
                 url.includes('.mp4') ||
                 url.includes('.mp3') ||
                 url.includes('google-analytics') ||
@@ -70,60 +86,25 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                 url.includes('doubleclick') ||
                 url.includes('adsystem') ||
                 url.includes('googlesyndication')) {
-                req.abort();
+                try { req.abort(); } catch (e) { try { req.continue(); } catch(_) {} }
             } else {
-                req.continue();
+                try { req.continue(); } catch (e) {}
             }
         });
         
         console.log(`🔍 Loading episode: ${episodeUrl}`);
         
         const startTime = Date.now();
-        
+
+        // Navigate and fail fast if page takes too long
         await page.goto(episodeUrl, { 
             waitUntil: 'domcontentloaded',
-            timeout: 15000 
+            timeout: 10000 
         });
-        
-        await delay(3000);
-        
-        // 🖼️ Enhanced image extraction using proven logic from scrapeFilmList.js
-        console.log('🖼️ Waiting for images to load...');
-        await page.evaluate(() => {
-            return new Promise((resolve) => {
-                const images = document.querySelectorAll('img');
-                let loadedCount = 0;
-                const totalImages = images.length;
 
-                console.log(`Found ${totalImages} images to load`);
-
-                if (totalImages === 0) {
-                    resolve();
-                    return;
-                }
-
-                const checkComplete = () => {
-                    loadedCount++;
-                    if (loadedCount >= totalImages) {
-                        resolve();
-                    }
-                };
-
-                images.forEach(img => {
-                    if (img.complete && img.naturalWidth > 0) {
-                        checkComplete();
-                    } else {
-                        img.addEventListener('load', checkComplete);
-                        img.addEventListener('error', checkComplete);
-                    }
-                });
-
-                setTimeout(() => {
-                    console.log(`Image loading timeout reached, continuing with ${loadedCount}/${totalImages} loaded`);
-                    resolve();
-                }, 3000);
-            });
-        });
+        // NOTE: we intentionally avoid waiting for images to fully load. 
+        // The poster/image src attributes exist in the HTML and can be extracted
+        // without downloading the image bytes. This saves several seconds on slow/free tiers.
 
         const animeImage = await page.evaluate(() => {
             const findAnimeImage = () => {
@@ -328,12 +309,13 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
         
         let streamingLink = null;
         let attempts = 0;
-        const maxAttempts = 4; 
-        
+        const maxAttempts = 2; // fewer attempts to reduce runtime
+
         while (!streamingLink && attempts < maxAttempts) {
             attempts++;
             console.log(`🔍 Attempt ${attempts}/${maxAttempts} to find iframe...`);
-            
+
+            // Try to find iframe sources without interacting/clicking first
             streamingLink = await page.evaluate(() => {
                 const findValidIframeSource = () => {
                     const blockedDomains = [
@@ -445,22 +427,20 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
             });
             
             if (!streamingLink && attempts < maxAttempts) {
+                // minimal interaction: try clicking one likely button and wait briefly
                 await page.evaluate(() => {
                     const buttons = document.querySelectorAll('button, .play-btn, .load-btn, [onclick], .btn');
                     for (const btn of buttons) {
                         const text = btn.textContent?.toLowerCase() || '';
                         if (text.includes('play') || text.includes('load') || text.includes('watch')) {
-                            try {
-                                btn.click();
-                                console.log(`Clicked button: ${text.substring(0, 20)}`);
-                                break;
-                            } catch (e) {
-                            }
+                            try { btn.click(); } catch(e) {}
+                            break;
                         }
                     }
                 });
-                
-                await delay(3000 + (attempts * 1000));
+
+                await delay(1000 + (attempts * 500));
+                // try to find iframe again in next loop
             }
         }
         
@@ -509,6 +489,14 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                 strategy: 'single-episode',
                 source: '123animes'
             };
+
+            // cache short-term
+            try {
+                scrapeCache.set(episodeUrl, {
+                    expiresAt: Date.now() + CACHE_TTL_MS,
+                    result: { success: true, data: streamingData }
+                });
+            } catch (e) {}
             
             // Database saving is disabled in this environment.
             // Previously this code saved results using saveSingleStreamingLink.
@@ -560,14 +548,14 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
         }
         
     } catch (error) {
-        console.error('❌ Error scraping single episode:', error.message);
+        console.error('❌ Error scraping single episode:', error && error.message ? error.message : error);
         return {
             success: false,
-            error: error.message,
+            error: error && error.message ? error.message : String(error),
             episode_url: episodeUrl,
-            extraction_time_seconds: parseFloat(((Date.now() - startTime) / 1000).toFixed(3))
+            extraction_time_seconds: typeof startTime === 'number' ? parseFloat(((Date.now() - startTime) / 1000).toFixed(3)) : null
         };
     } finally {
-        await browser.close();
+        try { await browser.close(); } catch (e) {}
     }
 };

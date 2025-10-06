@@ -19,7 +19,7 @@ app.get('/', (req, res) => {
         message: "🎬 Anime Scraper API is running!",
         version: "2.1.0",
         endpoints: [
-            "/episode-stream?id=one-piece-dub&ep=1",,
+            "/episode-stream?id=one-piece-dub&ep=1",
         ],
     });
 });
