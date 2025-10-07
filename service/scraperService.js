@@ -2,7 +2,12 @@ import axios from 'axios';
 import { load } from 'cheerio';
 
 export const defaultHeaders = {
-  'User-Agent': 'Mozilla/5.0 (compatible; ShirayukiBot/1.0; +https://example.com/bot)'
+  'User-Agent': 'Mozilla/5.0 (compatible; ShirayukiBot/1.0; +https://example.com/bot)',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.5',
+  'Accept-Encoding': 'gzip, deflate',
+  'Connection': 'keep-alive',
+  'Upgrade-Insecure-Requests': '1'
 };
 
 export function resolveUrlFactory(base) {
@@ -19,7 +24,14 @@ export function resolveUrlFactory(base) {
 }
 
 export async function fetchAndLoad(url) {
-  const resp = await axios.get(url, { headers: defaultHeaders, timeout: 20000 });
+  const resp = await axios.get(url, { 
+    headers: defaultHeaders, 
+    timeout: 5000, // Reduced to 5 seconds for production
+    maxRedirects: 2, // Reduce redirects further
+    validateStatus: function (status) {
+      return status >= 200 && status < 300; // Only accept 2xx status codes
+    }
+  });
   return load(resp.data);
 }
 

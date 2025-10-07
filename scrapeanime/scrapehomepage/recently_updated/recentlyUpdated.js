@@ -8,7 +8,7 @@ export default function scrapeRecentlyUpdated($, resolveUrl, source) {
     if (!/recently\s*updated/i.test(title)) return;
 
     // items live under .film-list > .item
-    w$.find('.film-list .item').each((j, item) => {
+    w$.find('.film-list .item').slice(0, 15).each((j, item) => {
       const el$ = $(item);
       const posterA = el$.find('a.poster').first();
       const nameA = el$.find('a.name').first();

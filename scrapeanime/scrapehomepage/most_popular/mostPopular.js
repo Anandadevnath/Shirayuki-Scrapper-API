@@ -6,7 +6,7 @@ export default function scrapeMostPopular($, resolveUrl, source) {
     const header = block$.find('.anif-block-header').text() || '';
     if (!/most\s*popular/i.test(header)) return;
 
-    block$.find('.anif-block-ul ul.ulclear > li').each((j, li) => {
+    block$.find('.anif-block-ul ul.ulclear > li').slice(0, 6).each((j, li) => {
       const el$ = $(li);
       const a = el$.find('h3.film-name a').first();
       let href = a.attr('href') || el$.find('a').first().attr('href') || '';

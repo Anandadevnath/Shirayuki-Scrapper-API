@@ -7,7 +7,7 @@ export default function scrapeTrending($, resolveUrl, source) {
     const found = $(sel);
     if (!found || !found.length) continue;
 
-    found.each((i, el) => {
+    found.slice(0, 6).each((i, el) => {
       const el$ = $(el);
       
       let title = el$.find('.film-title.dynamic-name').attr('data-jname') || 

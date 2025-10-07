@@ -7,7 +7,43 @@ import scrapeLatest from './latest/latest.js';
 import scrapeTrending from './trending/trending.js';
 import { fetchAndLoad, resolveUrlFactory } from '../../service/scraperService.js';
 
-async function scrapeSite(url, base, source, includeDetails = true) {
+// Simple in-memory cache
+const cache = new Map();
+const CACHE_TTL = 2 * 60 * 1000; // 2 minutes cache
+
+function getCacheKey(url, includeDetails) {
+  return `${url}_${includeDetails}`;
+}
+
+function getFromCache(key) {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCache(key, data) {
+  cache.set(key, {
+    data,
+    timestamp: Date.now()
+  });
+  
+  // Simple cleanup - remove old entries if cache gets too large
+  if (cache.size > 10) {
+    const oldestKeys = Array.from(cache.keys()).slice(0, 5);
+    oldestKeys.forEach(key => cache.delete(key));
+  }
+}
+
+async function scrapeSite(url, base, source, includeDetails = false) {
+	const cacheKey = getCacheKey(url, includeDetails);
+	const cached = getFromCache(cacheKey);
+	
+	if (cached) {
+		return cached;
+	}
+
 	const $ = await fetchAndLoad(url);
 	const resolveUrl = resolveUrlFactory(base);
 
@@ -17,19 +53,21 @@ async function scrapeSite(url, base, source, includeDetails = true) {
 		const top = await scrapeTopAiring($, resolveUrl, source, includeDetails);
 		if (top && top.length) items.push(...top);
 	} catch (e) {
-
+		// Silent fail for performance
 	}
 
 	try {
-		const popular = scrapeMostPopular($, resolveUrl, source);
+		const popular = await scrapeMostPopular($, resolveUrl, source, includeDetails);
 		if (popular && popular.length) items.push(...popular);
 	} catch (e) {
+		// Silent fail for performance
 	}
 
 	try {
-		const fav = scrapeMostFavorite($, resolveUrl, source);
+		const fav = await scrapeMostFavorite($, resolveUrl, source, includeDetails);
 		if (fav && fav.length) items.push(...fav);
 	} catch (e) {
+		// Silent fail for performance
 	}
 
 	try {
@@ -38,6 +76,7 @@ async function scrapeSite(url, base, source, includeDetails = true) {
 			if (recent && recent.length) items.push(...recent);
 		}
 	} catch (e) {
+		// Silent fail for performance
 	}
 
 	try {
@@ -46,18 +85,21 @@ async function scrapeSite(url, base, source, includeDetails = true) {
 			if (slider && slider.length) items.push(...slider);
 		}
 	} catch (e) {
+		// Silent fail for performance
 	}
 
 	try {
 		const latest = scrapeLatest($, resolveUrl, source);
 		if (latest && latest.length) items.push(...latest);
 	} catch (e) {
+		// Silent fail for performance
 	}
 
 	try {
-		const trending = scrapeTrending($, resolveUrl, source);
+		const trending = await scrapeTrending($, resolveUrl, source, includeDetails);
 		if (trending && trending.length) items.push(...trending);
 	} catch (e) {
+		// Silent fail for performance
 	}
 
 	const seen = new Set();
@@ -71,10 +113,13 @@ async function scrapeSite(url, base, source, includeDetails = true) {
 		}
 	}
 
+	// Cache the result
+	setCache(cacheKey, deduped);
+	
 	return deduped;
 }
 
-export async function scrapeHomepage(includeDetails = true) {
+export async function scrapeHomepage(includeDetails = false) {
 	const tasks = [
 		scrapeSite('https://hianime.to/home', 'https://hianime.to', 'hianime', includeDetails),
 		scrapeSite('https://123animehub.cc/home', 'https://123animehub.cc', '123animehub', includeDetails),
@@ -121,4 +166,3 @@ export async function scrapeHomepage(includeDetails = true) {
 }
 
 export default scrapeHomepage;
-

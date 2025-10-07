@@ -7,7 +7,7 @@ export default function scrapeLatest($, resolveUrl, source) {
     const found = $(sel);
     if (!found || !found.length) continue;
 
-    found.each((i, el) => {
+    found.slice(0, 15).each((i, el) => {
       const el$ = $(el);
       
       let title = el$.find('.film-name a').attr('title') || 
