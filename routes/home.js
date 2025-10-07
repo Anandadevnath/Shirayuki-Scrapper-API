@@ -1,5 +1,5 @@
 import express from 'express';
-import scrapeHomepage from '../scrapeanime/scrapehomepage/scrapehomepage.js';
+import scrapeHomepage from '../scrapeanime/homepage/scrapehomepage.js';
 
 const router = express.Router();
 
