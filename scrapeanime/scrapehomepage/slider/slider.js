@@ -13,13 +13,13 @@ export default function scrapeSlider($, resolveUrl, source) {
       let href = a.attr('href') || el$.attr('href') || '';
       href = href ? resolveUrl(href) : null;
 
-      let title = a.attr('title') || 
-                 el$.find('.film-title').attr('data-iname') || 
-                 el$.find('img').attr('alt') || 
+      let title = el$.find('.desi-head-title').text() ||
+                 el$.find('.film-title').text() || 
                  el$.find('.title').text() || 
                  el$.find('h3').text() || 
-                 el$.find('.desi-head-title').text() ||
-                 el$.find('[data-jname]').attr('data-jname') || null;
+                 a.attr('title') || 
+                 el$.find('img').attr('alt') || 
+                 el$.find('.film-title').attr('data-iname') || null;
       if (title) title = title.trim();
 
       let img = null;
