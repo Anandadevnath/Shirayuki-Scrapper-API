@@ -1,6 +1,4 @@
-import { scrapeAnimeDetails } from '../scrapeAnimeDetails.js';
-
-export default async function scrapeTopAiring($, resolveUrl, source, includeDetails = true) {
+export default function scrapeTopAiring($, resolveUrl, source) {
   const items = [];
 
   $('div.anif-block').each((i, block) => {
@@ -52,38 +50,6 @@ export default async function scrapeTopAiring($, resolveUrl, source, includeDeta
       });
     });
   });
-
-  // If includeDetails is true, fetch detailed information for each anime
-  if (includeDetails) {
-    const detailedItems = await Promise.allSettled(
-      items.map(async (item) => {
-        if (item.href) {
-          const details = await scrapeAnimeDetails(item.href);
-          return {
-            ...item,
-            details: {
-              description: details?.description || null,
-              synonyms: details?.synonyms || null,
-              aired: details?.aired || null,
-              premiered: details?.premiered || null,
-              duration: details?.duration || null,
-              status: details?.status || null,
-              malScore: details?.malScore || null,
-              genres: details?.genres || [],
-              studios: details?.studios || [],
-              producers: details?.producers || []
-            }
-          };
-        }
-        return item;
-      })
-    );
-
-    // Return only fulfilled promises, filter out rejected ones
-    return detailedItems
-      .filter(result => result.status === 'fulfilled')
-      .map(result => result.value);
-  }
 
   return items;
 }
