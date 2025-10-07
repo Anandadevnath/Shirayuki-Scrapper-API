@@ -3,16 +3,18 @@ import scrapeMostPopular from './most_popular/mostPopular.js';
 import scrapeMostFavorite from './most_favorite/mostFavorite.js';
 import scrapeRecentlyUpdated from './recently_updated/recentlyUpdated.js';
 import scrapeSlider from './slider/slider.js';
+import scrapeLatest from './latest/latest.js';
+import scrapeTrending from './trending/trending.js';
 import { fetchAndLoad, resolveUrlFactory } from '../../service/scraperService.js';
 
-async function scrapeSite(url, base, source) {
+async function scrapeSite(url, base, source, includeDetails = true) {
 	const $ = await fetchAndLoad(url);
 	const resolveUrl = resolveUrlFactory(base);
 
 	const items = [];
 
 	try {
-		const top = scrapeTopAiring($, resolveUrl, source);
+		const top = await scrapeTopAiring($, resolveUrl, source, includeDetails);
 		if (top && top.length) items.push(...top);
 	} catch (e) {
 
@@ -46,6 +48,18 @@ async function scrapeSite(url, base, source) {
 	} catch (e) {
 	}
 
+	try {
+		const latest = scrapeLatest($, resolveUrl, source);
+		if (latest && latest.length) items.push(...latest);
+	} catch (e) {
+	}
+
+	try {
+		const trending = scrapeTrending($, resolveUrl, source);
+		if (trending && trending.length) items.push(...trending);
+	} catch (e) {
+	}
+
 	const seen = new Set();
 	const deduped = [];
 	for (const it of items) {
@@ -60,10 +74,10 @@ async function scrapeSite(url, base, source) {
 	return deduped;
 }
 
-export async function scrapeHomepage() {
+export async function scrapeHomepage(includeDetails = true) {
 	const tasks = [
-		scrapeSite('https://hianime.to/home', 'https://hianime.to', 'hianime'),
-		scrapeSite('https://123animehub.cc/home', 'https://123animehub.cc', '123animehub'),
+		scrapeSite('https://hianime.to/home', 'https://hianime.to', 'hianime', includeDetails),
+		scrapeSite('https://123animehub.cc/home', 'https://123animehub.cc', '123animehub', includeDetails),
 	];
 
 	const results = await Promise.allSettled(tasks);
@@ -88,7 +102,6 @@ export async function scrapeHomepage() {
 		}
 	}
 
-	// compute per-section totals and assign 1-based index per section
 	const sectionTotals = {};
 	for (const it of deduped) {
 		const sec = it.section || 'unknown';

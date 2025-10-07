@@ -6,7 +6,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const start = Date.now();
-    const result = await scrapeHomepage();
+    const result = await scrapeHomepage(true); // Always include details
     const duration = (Date.now() - start) / 1000;
 
     if (result.success) {
