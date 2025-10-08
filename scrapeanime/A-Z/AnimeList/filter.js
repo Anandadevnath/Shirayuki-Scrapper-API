@@ -31,4 +31,3 @@ async function scrapeAnimeByLetter(letter, page = 1) {
 
 
 export { scrapeAnimeByLetter };
-

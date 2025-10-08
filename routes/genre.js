@@ -1,16 +1,16 @@
 import express from 'express';
-import { scrapeAnimeByLetter } from '../scrapeanime/A-Z/AnimeList/filter.js';
+import { scrapeAnimeByGenre } from '../scrapeanime/A-Z/Genre/genre.js';
 
 const router = express.Router();
 
-router.get('/:letter', async (req, res) => {
+router.get('/:genre', async (req, res) => {
   try {
     const start = Date.now();
-    const letter = req.params.letter;
+    const genre = req.params.genre;
     const page = parseInt(req.query.page) || 1;
     const axios = (await import('axios')).default;
     const cheerio = await import('cheerio');
-    const url = `https://123animehub.cc/az-all-anime/${letter}/?page=${page}`;
+    const url = `https://123animehub.cc/genere/${genre}?page=${page}`;
     let total_counts = null;
     try {
       const { data: html } = await axios.get(url);
@@ -21,7 +21,7 @@ router.get('/:letter', async (req, res) => {
       total_counts = null;
     }
 
-    const result = await scrapeAnimeByLetter(letter, page);
+    const result = await scrapeAnimeByGenre(genre, page);
     const duration = (Date.now() - start) / 1000;
     const indexedResult = result.map((anime, idx) => ({
       index: idx + 1,
@@ -40,7 +40,7 @@ router.get('/:letter', async (req, res) => {
         previous_page: page > 1 ? page - 1 : null
       },
       extraction_time_seconds: duration,
-      message: `Anime list for letter '${letter}' - Page ${page}`,
+      message: `Anime list for genre '${genre}' - Page ${page}`,
       timestamp: new Date().toISOString(),
       source_url: url
     });
@@ -54,6 +54,7 @@ router.get('/:letter', async (req, res) => {
       pagination: {
         current_page: parseInt(req.query.page) || 1,
         total_found: 0,
+        total_counts: 0,
         has_next_page: false,
         has_previous_page: false,
         next_page: null,
@@ -62,6 +63,5 @@ router.get('/:letter', async (req, res) => {
     });
   }
 });
-
 
 export default router;
