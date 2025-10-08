@@ -1,57 +1,39 @@
 import express from 'express';
-import { scrapeFilmList } from '../scrapeanime/A-Z/all.js';
+import { scrapeAnimeByLetter } from '../scrapeanime/A-Z/filter.js';
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+router.get('/:letter', async (req, res) => {
   try {
     const start = Date.now();
+    const letter = req.params.letter;
     const page = parseInt(req.query.page) || 1;
-    
-    console.log(`📚 Starting anime list scraping for page ${page}...`);
-    
-    // Build URL with pagination
-    let baseUrl = 'https://w1.123animes.ru/az-all-anime/all/';
-    if (page > 1) {
-      baseUrl += `?page=${page}`;
-    }
-    
-    console.log(`🌐 Scraping URL: ${baseUrl}`);
-    
-    const result = await scrapeFilmList(baseUrl);
+    const result = await scrapeAnimeByLetter(letter, page);
     const duration = (Date.now() - start) / 1000;
-
-    console.log(`✅ Anime list scraping completed in ${duration}s`);
-    console.log(`📊 Found ${result.length} anime for page ${page}`);
-
-    // Calculate pagination info
-    const totalFound = result.length;
-    const hasNextPage = totalFound > 0; // If we found anime, there might be more
-    const hasPrevPage = page > 1;
-
+    const indexedResult = result.map((anime, idx) => ({
+      index: idx + 1,
+      ...anime
+    }));
     res.json({
       success: true,
-      data: result,
+      data: indexedResult,
       pagination: {
         current_page: page,
-        total_found: totalFound,
-        has_next_page: hasNextPage,
-        has_previous_page: hasPrevPage,
-        next_page: hasNextPage ? page + 1 : null,
-        previous_page: hasPrevPage ? page - 1 : null
+        total_found: indexedResult.length,
+        has_next_page: indexedResult.length > 0,
+        has_previous_page: page > 1,
+        next_page: indexedResult.length > 0 ? page + 1 : null,
+        previous_page: page > 1 ? page - 1 : null
       },
       extraction_time_seconds: duration,
-      message: `Anime list from 123animes.ru - Page ${page}`,
+      message: `Anime list for letter '${letter}' - Page ${page}`,
       timestamp: new Date().toISOString(),
-      source_url: baseUrl
+      source_url: `https://123animehub.cc/az-all-anime/${letter}/?page=${page}`
     });
-
   } catch (error) {
     const duration = (Date.now() - start) / 1000;
-    console.error('❌ Error scraping anime list:', error.message);
-    
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: error.message,
       extraction_time_seconds: duration,
       timestamp: new Date().toISOString(),
@@ -66,5 +48,6 @@ router.get('/', async (req, res) => {
     });
   }
 });
+
 
 export default router;

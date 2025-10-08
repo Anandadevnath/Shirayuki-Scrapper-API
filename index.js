@@ -22,29 +22,27 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => {
     res.json({
-        message: "🎬 Anime Scraper API is running!",
+        message: " Welcome to Shirayuki Anime Scraper!",
         version: "1.0.0",
         endpoints: [
-            "/home",
-            "/top10",
-            "/monthly10",
-            "/weekly10",
-            "/az-all-anime/all/?page=1",
-            "/episode-stream?id=one-piece-dub&ep=1",
-            "/anime/:slug (e.g. /anime/sozai-saishuka-no-isekai-ryokouki)",
+            { name: "Homepage", path: "/home" },
+            { name: "Top 10 animes", path: "/top10" },
+            { name: "Monthly Top 10 animes", path: "/monthly10" },
+            { name: "Weekly Top 10 animes", path: "/weekly10" },
+            { name: "A-Z animes based on alphabets", path: "/az-all-anime/all/?page=1" },
+            { name: "Streaming url", path: "/episode-stream?id=one-piece-dub&ep=1" },
+            { name: "AnimeDetails by title", path: "/anime/sozai-saishuka-no-isekai-ryokouki" },
         ],
     });
 });
 
-// Dynamic anime details endpoint
 app.get('/anime/:slug', animedetailsRouter);
-
 app.use('/', episodeRouter);
 app.use('/home', homeRouter);
 app.use('/top10', top10Router);
 app.use('/monthly10', monthlyRouter);
 app.use('/weekly10', weeklyRouter);
-app.use('/az-all-anime/all', animeListRouter);
+app.use('/az-all-anime', animeListRouter);
 app.use(animedetailsRouter);
 
 

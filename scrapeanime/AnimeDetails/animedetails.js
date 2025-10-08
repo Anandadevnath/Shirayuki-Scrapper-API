@@ -41,10 +41,20 @@ router.get('/anime/:slug', async (req, res) => {
         if (key === 'released:') released = value.text().trim();
       });
     });
-    
+
+
     // Quality
-    quality = $('dt:contains("Quality:")').next('dd').text().trim() ||
-      $('dt:contains("Quality:")').parent().find('div:contains("Quality:")').text().replace('Quality:', '').trim();
+    const qualityDiv = $("div:contains('Quality:')");
+    if (qualityDiv.length) {
+      const qualitySpan = qualityDiv.find('span.quality').first();
+      if (qualitySpan.length) {
+        quality = qualitySpan.text().trim();
+      } else {
+        const text = qualityDiv.text();
+        const match = text.match(/Quality:\s*(\w+)/i);
+        if (match) quality = match[1];
+      }
+    }
 
     res.json({
       title,
