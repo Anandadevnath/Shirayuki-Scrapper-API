@@ -9,6 +9,7 @@ import animeListRouter from './routes/anime-list.js';
 import animedetailsRouter from './scrapeanime/AnimeDetails/animedetails.js';
 
 import genreRouter from './routes/genre.js';
+import searchRouter from './routes/search.js';
 
 dotenv.config();
 const app = express();
@@ -33,6 +34,8 @@ app.get('/', (req, res) => {
             { name: "Weekly Top 10 animes", path: "/weekly10" },
             { name: "A-Z animes based on alphabets", path: "/az-all-anime/all/?page=1" },
             { name: "Anime by Genre", path: "/genere/Action?page=2" },
+            { name: "Search Anime", path: "/search?keyword=one%20piece" },
+            { name: "Search Suggestions", path: "/search/suggestions?q=demon%20slayer" },
             { name: "Streaming url", path: "/episode-stream?id=one-piece-dub&ep=1" },
             { name: "AnimeDetails by title", path: "/anime/sozai-saishuka-no-isekai-ryokouki" },
         ],
@@ -46,6 +49,7 @@ app.use('/monthly10', monthlyRouter);
 app.use('/weekly10', weeklyRouter);
 app.get('/anime/:slug', animedetailsRouter);
 app.use('/genere', genreRouter);
+app.use('/search', searchRouter);
 app.use('/az-all-anime', animeListRouter);
 
 

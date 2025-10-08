@@ -9,10 +9,21 @@ async function scrapeAnimeByLetter(letter, page = 1) {
 
     $('.film-list .item').each((i, el) => {
         const title = $(el).find('.name').text().trim();
-        let image = $(el).find('.poster img').attr('src');
+        
+        // Extract image 
+        const imgElement = $(el).find('.film-poster img, .poster img, img').first();
+        let image = imgElement.attr('data-src') || 
+                   imgElement.attr('src') || 
+                   imgElement.attr('data-lazy') || '';
+        
         if (image && !image.startsWith('http')) {
-            image = 'https://123animehub.cc' + image;
+            image = image.startsWith('/') ? 'https://123animehub.cc' + image : 'https://123animehub.cc/' + image;
         }
+        
+        if (!image || image.includes('no_poster.jpg')) {
+            image = '';
+        }
+        
         const sub = $(el).find('.status .sub').length > 0;
         const dub = $(el).find('.status .dub').length > 0;
         const episodes = $(el).find('.ep').text().replace('Ep ', '').trim();
