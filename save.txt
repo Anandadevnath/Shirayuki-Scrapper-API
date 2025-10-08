@@ -3,11 +3,13 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Use stealth plugin (keeps behavior unchanged). Launch cost is amortized by reusing a browser.
 puppeteer.use(StealthPlugin());
 
 const scrapeCache = new Map();
 const CACHE_TTL_MS = 1000 * 60 * 5;
 
+// Reuse a single browser instance across scrapes to avoid repeated cold-starts.
 let browserSingleton = null;
 let browserLaunchPromise = null;
 
@@ -29,11 +31,12 @@ async function getBrowser() {
                     '--disable-infobars'
                 ]
             });
+            // on process exit try to close the browser
             try {
                 if (typeof process !== 'undefined' && process && process.on) {
-                    process.on('exit', () => { try { b.close(); } catch (e) { } });
+                    process.on('exit', () => { try { b.close(); } catch (e) {} });
                 }
-            } catch (e) { }
+            } catch (e) {}
             browserSingleton = b;
             return browserSingleton;
         })();
@@ -71,10 +74,12 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
     const browser = await getBrowser();
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    // shorter timeouts to fail-fast on slow pages on free-tier hosts (Render)
     page.setDefaultNavigationTimeout(8000);
     page.setDefaultTimeout(8000);
 
     try {
+        // Intercept and block heavy resources to speed page load. Keep it simple to reduce overhead.
         try {
             await page.setRequestInterception(true);
             page.on('request', (req) => {
@@ -84,6 +89,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                     try { req.abort(); } catch (e) { try { req.continue(); } catch (_) { } }
                     return;
                 }
+                // quick ad heuristics
                 if (url.includes('ads') || url.includes('doubleclick') || url.includes('googlesyndication') || url.includes('googletagmanager')) {
                     try { req.abort(); } catch (e) { try { req.continue(); } catch (_) { } }
                     return;
@@ -91,13 +97,80 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                 try { req.continue(); } catch (e) { }
             });
         } catch (e) {
+            // some environments disallow request interception on reused pages. ignore and continue.
         }
 
         const startTime = Date.now();
 
         await page.goto(episodeUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
 
+        // Extract image with a compact client function (no console logging inside evaluate)
+        const animeImage = await page.evaluate(() => {
+            const findAnimeImage = () => {
 
+                const imageSelectors = [
+                    '.anime-poster img',
+                    '.poster img',
+                    '.anime-image img',
+                    '.anime-cover img',
+                    '.show-poster img',
+                    '.thumbnail img',
+                    '.anime-info img',
+                    '.series-poster img',
+                    '.film-poster img',
+                    '.movie-poster img',
+                    'img[alt*="poster"]',
+                    'img[alt*="cover"]',
+                    'img[class*="poster"]',
+                    'img[class*="cover"]',
+                    'img[src*="poster"]',
+                    'img[src*="cover"]',
+                    '.anime-details img',
+                    '.anime-meta img',
+                    '.series-info img',
+                    '.inner img',
+                    '.item img'
+                ];
+
+                for (const selector of imageSelectors) {
+                    const img = document.querySelector(selector);
+                    if (img) {
+                        let imageSrc = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-lazy') || img.getAttribute('src') || img.src;
+                        if (imageSrc && imageSrc.startsWith('/')) imageSrc = 'https://w1.123animes.ru' + imageSrc;
+                        if (imageSrc && imageSrc.startsWith('http') && imageSrc.length > 10 && !/no_poster|placeholder|default|no-image|loading|lazy|logo|icon|banner|ad/i.test(imageSrc)) {
+                            return imageSrc;
+                        }
+                    }
+                }
+
+                // Fallback: scan only reasonably sized images, but cap to first 40 images to avoid long loops
+                const allImages = Array.from(document.querySelectorAll('img')).slice(0, 40);
+                for (const img of allImages) {
+                    let imageSrc = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-lazy') || img.getAttribute('src') || img.src;
+                    if (!imageSrc) continue;
+                    if (imageSrc.startsWith('/')) imageSrc = 'https://w1.123animes.ru' + imageSrc;
+                    if (imageSrc.startsWith('http') && /\.(jpe?g|png)/i.test(imageSrc) && !/no_poster|placeholder|default|no-image|loading|lazy|logo|icon|banner|ad/i.test(imageSrc) && img.naturalWidth > 80 && img.naturalHeight > 80) {
+                        return imageSrc;
+                    }
+                }
+
+                // Check inline-styled elements for background images (only inline style to avoid scanning all computed styles)
+                const styled = Array.from(document.querySelectorAll('[style]')).slice(0, 60);
+                for (const el of styled) {
+                    const style = el.getAttribute('style') || '';
+                    const match = style.match(/background-image:\s*url\(['"]?([^'"\)]+)['"]?\)/i);
+                    if (match && match[1]) {
+                        let imageSrc = match[1];
+                        if (imageSrc.startsWith('/')) imageSrc = 'https://w1.123animes.ru' + imageSrc;
+                        if (imageSrc.startsWith('http') && !/no_poster|placeholder|default|no-image|loading|lazy|logo|icon|banner|ad/i.test(imageSrc)) return imageSrc;
+                    }
+                }
+
+                return null;
+            };
+
+            return findAnimeImage();
+        });
 
         let streamingLink = null;
         let attempts = 0;
@@ -107,6 +180,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
             attempts++;
             streamingLink = await page.evaluate(() => {
                 const findValidIframeSource = () => {
+                    // Explicitly whitelist known video hosts to avoid mistaking comment embeds (e.g., Disqus)
                     const whitelistHosts = [
                         'bunnycdn.to',
                         'bunnycdn',
@@ -129,6 +203,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                         'video'
                     ];
 
+                    // domains to explicitly reject
                     const blacklist = [
                         'disqus.com',
                         'dtscout.com',
@@ -148,6 +223,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                         if (!src || src === 'about:blank' || !src.startsWith('http') || src.length < 30) return false;
                         const s = src.toLowerCase();
                         if (blacklist.some(b => s.includes(b))) return false;
+                        // require at least one whitelist host/pattern
                         return whitelistHosts.some(w => {
                             try {
                                 if (w.includes('.') || w.includes('\\')) return s.includes(w);
@@ -187,6 +263,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
             });
 
             if (!streamingLink && attempts < maxAttempts) {
+                // Click a likely play button to reveal lazy-loaded iframe (if present)
                 try {
                     await page.evaluate(() => {
                         const buttons = document.querySelectorAll('button, .play-btn, .load-btn, [onclick], .btn');
@@ -198,14 +275,15 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                             }
                         }
                     });
-                } catch (e) { }
+                } catch (e) {}
 
+                // After clicking, poll for up to 3s to allow lazy-loaded players to appear.
                 const pollStart = Date.now();
-                const pollTimeout = 3000;
-                const pollInterval = 300;
+                const pollTimeout = 3000; // ms total waiting
+                const pollInterval = 300; // ms between checks
                 while (Date.now() - pollStart < pollTimeout && !streamingLink) {
                     try {
-
+                        // lightweight check for an iframe or anchor with known hosts
                         streamingLink = await page.evaluate(() => {
                             const whitelist = ['bunnycdn', 'filemoon', 'doodstream', 'streamtape', 'mp4upload', 'mixdrop', 'upstream', 'streamwish'];
                             const isCandidate = (s) => s && typeof s === 'string' && s.startsWith('http') && s.length > 30 && whitelist.some(w => s.toLowerCase().includes(w));
@@ -238,8 +316,11 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
         if (streamingLink) {
             console.log(`✅ Found valid streaming link: ${streamingLink.substring(0, 60)}...`);
 
-
-
+            if (animeImage) {
+                console.log(`🖼️ Found anime poster image: ${animeImage.substring(0, 60)}...`);
+            } else {
+                console.log(`❌ No anime poster image found`);
+            }
 
             const episodePatterns = [
                 /episode[\/\-]?(\d+)/i,
@@ -270,8 +351,12 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
             const streamingData = {
                 title: animeTitle,
                 episode_number: episodeNumber,
+                episode_url: episodeUrl,
                 streaming_link: streamingLink,
-                range_id: 'single-episode'
+                image: animeImage,
+                range_id: 'single-episode',
+                strategy: 'single-episode',
+                source: '123animes'
             };
 
             try {
@@ -338,11 +423,13 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
         };
     } finally {
         try {
+            // Close page only; keep shared browser running to amortize cold-start cost
             try { await page.close(); } catch (e) { }
         } catch (e) { }
     }
 };
 
+// Expose a helper to close the shared browser when the host wants to shut down.
 export async function closeSharedBrowser() {
     if (browserSingleton) {
         try { await browserSingleton.close(); } catch (e) { }

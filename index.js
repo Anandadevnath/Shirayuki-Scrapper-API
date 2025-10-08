@@ -6,6 +6,7 @@ import top10Router from './routes/top10.js';
 import monthlyRouter from './routes/monthly.js';
 import weeklyRouter from './routes/weekly.js';
 import animeListRouter from './routes/anime-list.js';
+import animedetailsRouter from './scrapeanime/AnimeDetails/animedetails.js';
 
 dotenv.config();
 const app = express();
@@ -30,9 +31,13 @@ app.get('/', (req, res) => {
             "/weekly10",
             "/az-all-anime/all/?page=1",
             "/episode-stream?id=one-piece-dub&ep=1",
+            "/anime/:slug (e.g. /anime/sozai-saishuka-no-isekai-ryokouki)",
         ],
     });
 });
+
+// Dynamic anime details endpoint
+app.get('/anime/:slug', animedetailsRouter);
 
 app.use('/', episodeRouter);
 app.use('/home', homeRouter);
@@ -40,6 +45,7 @@ app.use('/top10', top10Router);
 app.use('/monthly10', monthlyRouter);
 app.use('/weekly10', weeklyRouter);
 app.use('/az-all-anime/all', animeListRouter);
+app.use(animedetailsRouter);
 
 
 const PORT = process.env.PORT || 5000;
