@@ -209,7 +209,6 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                         streamingLink = await page.evaluate(() => {
                             const whitelist = ['bunnycdn', 'filemoon', 'doodstream', 'streamtape', 'mp4upload', 'mixdrop', 'upstream', 'streamwish'];
                             const isCandidate = (s) => s && typeof s === 'string' && s.startsWith('http') && s.length > 30 && whitelist.some(w => s.toLowerCase().includes(w));
-                            // check priority iframe
                             const p = document.querySelector('iframe');
                             if (p) {
                                 const s = p.src || p.getAttribute('src') || p.getAttribute('data-src');
@@ -238,9 +237,6 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
         if (streamingLink) {
             console.log(`✅ Found valid streaming link: ${streamingLink.substring(0, 60)}...`);
 
-
-
-
             const episodePatterns = [
                 /episode[\/\-]?(\d+)/i,
                 /ep[\/\-]?(\d+)/i,
@@ -258,26 +254,107 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
             }
 
             let animeTitle = 'Unknown Anime';
+            let animeId = 'unknown';
             const urlParts = episodeUrl.split('/');
             const animeIndex = urlParts.findIndex(part => part === 'anime');
 
             if (animeIndex !== -1 && urlParts[animeIndex + 1]) {
-                animeTitle = urlParts[animeIndex + 1]
+                animeId = urlParts[animeIndex + 1];
+                animeTitle = animeId
                     .replace(/-/g, ' ')
                     .replace(/\b\w/g, l => l.toUpperCase());
             }
+
+            const episodeRanges = await page.evaluate(() => {
+                const ranges = [];
+
+                const rangeSpans = document.querySelectorAll('span[data-range-id]');
+
+                for (const span of rangeSpans) {
+                    const rangeText = span.textContent?.trim();
+                    const rangeId = span.getAttribute('data-range-id');
+
+                    if (rangeText && /^\d+\s*[-–]\s*\d+$/.test(rangeText)) {
+                        ranges.push({
+                            range_id: rangeId,
+                            range_text: rangeText.replace(/\s+/g, '').replace('–', '-')
+                        });
+                    }
+                }
+
+                if (ranges.length === 0) {
+                    const episodeRangeLists = document.querySelectorAll('ul.episodes_range, .episodes_range');
+
+                    for (const element of episodeRangeLists) {
+                        const rangeId = element.getAttribute('data-range-id');
+                        if (rangeId) {
+                            const textContent = element.textContent || '';
+                            const rangeMatch = textContent.match(/(\d+)\s*[-–]\s*(\d+)/);
+                            if (rangeMatch) {
+                                ranges.push({
+                                    range_id: rangeId,
+                                    range_text: `${rangeMatch[1]}-${rangeMatch[2]}`
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if (ranges.length === 0) {
+                    const rangeElements = document.querySelectorAll('[class*="range"], [class*="episode"]');
+
+                    for (const element of rangeElements) {
+                        const textContent = element.textContent || '';
+                        const rangeMatch = textContent.match(/(\d+)\s*[-–]\s*(\d+)/);
+                        if (rangeMatch) {
+                            const rangeText = `${rangeMatch[1]}-${rangeMatch[2]}`;
+                            ranges.push({
+                                range_id: element.getAttribute('data-range-id') || rangeText,
+                                range_text: rangeText
+                            });
+                        }
+                    }
+                }
+
+                return ranges;
+            });
+
+            let currentRange = 'single-episode';
+            if (episodeRanges.length > 0 && episodeNumber !== 'Unknown') {
+                const currentEpNum = parseInt(episodeNumber);
+
+                for (const range of episodeRanges) {
+                    const [start, end] = range.range_text.split('-').map(n => parseInt(n.trim()));
+                    if (currentEpNum >= start && currentEpNum <= end) {
+                        currentRange = range.range_text;
+                        break;
+                    }
+                }
+            }
+
+            const allRanges = episodeRanges.map(range => range.range_text).sort((a, b) => {
+                const aStart = parseInt(a.split('-')[0]);
+                const bStart = parseInt(b.split('-')[0]);
+                return aStart - bStart;
+            });
 
             const streamingData = {
                 title: animeTitle,
                 episode_number: episodeNumber,
                 streaming_link: streamingLink,
-                range_id: 'single-episode'
+                range_id: currentRange,
+                all_ranges: allRanges.length > 0 ? allRanges : ['single-episode']
             };
 
             try {
                 scrapeCache.set(episodeUrl, {
                     expiresAt: Date.now() + CACHE_TTL_MS,
-                    result: { success: true, data: streamingData }
+                    result: {
+                        success: true,
+                        anime_id: animeId,
+                        episode: episodeNumber,
+                        data: streamingData
+                    }
                 });
             } catch (e) { }
 
@@ -285,6 +362,8 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
 
             return {
                 success: true,
+                anime_id: animeId,
+                episode: episodeNumber,
                 data: streamingData,
                 extraction_time_seconds: parseFloat(((Date.now() - startTime) / 1000).toFixed(3))
             };
