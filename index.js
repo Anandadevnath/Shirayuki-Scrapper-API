@@ -7,6 +7,7 @@ import monthlyRouter from './routes/monthly.js';
 import weeklyRouter from './routes/weekly.js';
 import animeListRouter from './routes/anime-list.js';
 import animedetailsRouter from './scrapeanime/AnimeDetails/animedetails.js';
+import scheduleRouter from './routes/schedule.js';
 
 import genreRouter from './routes/genre.js';
 import searchRouter from './routes/search.js';
@@ -32,6 +33,8 @@ app.get('/', (req, res) => {
             { name: "Top 10 animes", path: "/top10" },
             { name: "Monthly Top 10 animes", path: "/monthly10" },
             { name: "Weekly Top 10 animes", path: "/weekly10" },
+            { name: "Weekly Schedule", path: "/weeklyschedule" },
+            { name: "Anime Schedule", path: "/schedule" },
             { name: "A-Z animes based on alphabets", path: "/az-all-anime/all/?page=1" },
             { name: "Anime by Genre", path: "/genere/Action?page=2" },
             { name: "Search Anime", path: "/search?keyword=one%20piece" },
@@ -47,6 +50,7 @@ app.use('/home', homeRouter);
 app.use('/top10', top10Router);
 app.use('/monthly10', monthlyRouter);
 app.use('/weekly10', weeklyRouter);
+app.use('/schedule', scheduleRouter);
 app.get('/anime/:slug', animedetailsRouter);
 app.use('/genere', genreRouter);
 app.use('/search', searchRouter);

@@ -24,9 +24,14 @@ async function getBrowser() {
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
                     '--no-first-run',
-                    '--window-size=1920,1080',
+                    '--window-size=1280,720',
                     '--disable-blink-features=AutomationControlled',
-                    '--disable-infobars'
+                    '--disable-infobars',
+                    '--disable-background-timer-throttling',
+                    '--disable-renderer-backgrounding',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-features=TranslateUI',
+                    '--disable-extensions'
                 ]
             });
             try {
@@ -71,8 +76,8 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
     const browser = await getBrowser();
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    page.setDefaultNavigationTimeout(8000);
-    page.setDefaultTimeout(8000);
+    page.setDefaultNavigationTimeout(6000);
+    page.setDefaultTimeout(6000);
 
     try {
         try {
@@ -95,7 +100,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
 
         const startTime = Date.now();
 
-        await page.goto(episodeUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
+        await page.goto(episodeUrl, { waitUntil: 'domcontentloaded', timeout: 6000 });
 
 
 
@@ -173,7 +178,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                         if (src && isValidStreamingLink(src)) return src;
                     }
 
-                    const iframes = Array.from(document.querySelectorAll('iframe')).slice(0, 40);
+                    const iframes = Array.from(document.querySelectorAll('iframe')).slice(0, 20);
                     for (const iframe of iframes) {
                         const src = iframe.src || iframe.getAttribute('src') || iframe.getAttribute('data-src') || iframe.getAttribute('data-lazy') || iframe.getAttribute('data-original');
                         if (!src) continue;
@@ -201,8 +206,8 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                 } catch (e) { }
 
                 const pollStart = Date.now();
-                const pollTimeout = 3000;
-                const pollInterval = 300;
+                const pollTimeout = 2000;
+                const pollInterval = 200;
                 while (Date.now() - pollStart < pollTimeout && !streamingLink) {
                     try {
 
@@ -214,12 +219,12 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                                 const s = p.src || p.getAttribute('src') || p.getAttribute('data-src');
                                 if (isCandidate(s)) return s;
                             }
-                            const iframes = Array.from(document.querySelectorAll('iframe')).slice(0, 40);
+                            const iframes = Array.from(document.querySelectorAll('iframe')).slice(0, 20);
                             for (const iframe of iframes) {
                                 const s = iframe.src || iframe.getAttribute('src') || iframe.getAttribute('data-src');
                                 if (isCandidate(s)) return s;
                             }
-                            const anchors = Array.from(document.querySelectorAll('a[href]')).slice(0, 60);
+                            const anchors = Array.from(document.querySelectorAll('a[href]')).slice(0, 30);
                             for (const a of anchors) {
                                 const s = a.href;
                                 if (isCandidate(s)) return s;
