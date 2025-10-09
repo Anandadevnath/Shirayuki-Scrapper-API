@@ -20,7 +20,9 @@ async function scrapeSchedule() {
                 '--disable-features=TranslateUI',
                 '--disable-web-security',
                 '--disable-features=VizDisplayCompositor',
-                '--disable-extensions'
+                '--disable-extensions',
+                '--memory-pressure-off',
+                '--max_old_space_size=4096'
             ]
         });
 
@@ -35,28 +37,43 @@ async function scrapeSchedule() {
             }
         });
 
-        await page.setViewport({ width: 1366, height: 768 });
+        await page.setViewport({ width: 1280, height: 720 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
         await page.goto('https://123animehub.cc', {
-            waitUntil: 'domcontentloaded',
-            timeout: 8000
+            waitUntil: 'networkidle0',
+            timeout: 15000
         });
 
-        await page.waitForSelector('body', { timeout: 2000 });
-
-        await page.evaluate(() => {
-            if (typeof showschedulemenu === 'function') {
-                showschedulemenu();
+        // Try to wait for body with multiple attempts
+        let bodyFound = false;
+        for (let i = 0; i < 3 && !bodyFound; i++) {
+            try {
+                await page.waitForSelector('body', { timeout: 5000 });
+                bodyFound = true;
+            } catch (e) {
+                console.log(`Body selector attempt ${i + 1} failed, retrying...`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
+        }
 
-            const scheduleBtn = document.querySelector('#recomendedclosebtn, button[onclick*="schedule"]');
-            if (scheduleBtn) {
-                scheduleBtn.click();
-            }
-        });
+        // Try to trigger schedule loading with error handling
+        try {
+            await page.evaluate(() => {
+                if (typeof showschedulemenu === 'function') {
+                    showschedulemenu();
+                }
 
-        await new Promise(resolve => setTimeout(resolve, 900));
+                const scheduleBtn = document.querySelector('#recomendedclosebtn, button[onclick*="schedule"]');
+                if (scheduleBtn) {
+                    scheduleBtn.click();
+                }
+            });
+        } catch (evalError) {
+            console.log('Schedule trigger failed, continuing with static content...');
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         const content = await page.content();
         const $ = cheerio.load(content);
@@ -92,44 +109,48 @@ async function scrapeSchedule() {
             }
         });
 
-        // If still no schedule found, try alternative approach
+        // If still no schedule found, try alternative approach with error handling
         if (schedule.length === 0) {
-            const scheduleData = await page.$$eval('.scheduletitle, .schedulelist, .airtime', elements => {
-                const result = [];
-                let currentDay = '';
+            try {
+                const scheduleData = await page.$$eval('.scheduletitle, .schedulelist, .airtime', elements => {
+                    const result = [];
+                    let currentDay = '';
 
-                elements.forEach(el => {
-                    if (el.classList.contains('scheduletitle')) {
-                        currentDay = el.textContent.trim();
-                    } else if (el.classList.contains('schedulelist')) {
-                        const link = el.querySelector('a');
-                        const anime = link ? link.textContent.trim() : el.textContent.trim();
+                    elements.forEach(el => {
+                        if (el.classList.contains('scheduletitle')) {
+                            currentDay = el.textContent.trim();
+                        } else if (el.classList.contains('schedulelist')) {
+                            const link = el.querySelector('a');
+                            const anime = link ? link.textContent.trim() : el.textContent.trim();
 
-                        let nextEl = el.nextElementSibling;
-                        let time = 'No time specified';
+                            let nextEl = el.nextElementSibling;
+                            let time = 'No time specified';
 
-                        while (nextEl && !nextEl.classList.contains('scheduletitle') && !nextEl.classList.contains('schedulelist')) {
-                            if (nextEl.classList.contains('airtime')) {
-                                time = nextEl.textContent.trim();
-                                break;
+                            while (nextEl && !nextEl.classList.contains('scheduletitle') && !nextEl.classList.contains('schedulelist')) {
+                                if (nextEl.classList.contains('airtime')) {
+                                    time = nextEl.textContent.trim();
+                                    break;
+                                }
+                                nextEl = nextEl.nextElementSibling;
                             }
-                            nextEl = nextEl.nextElementSibling;
-                        }
 
-                        if (anime && currentDay) {
-                            result.push({
-                                day: currentDay,
-                                anime,
-                                time
-                            });
+                            if (anime && currentDay) {
+                                result.push({
+                                    day: currentDay,
+                                    anime,
+                                    time
+                                });
+                            }
                         }
-                    }
+                    });
+
+                    return result;
                 });
 
-                return result;
-            });
-
-            schedule.push(...scheduleData);
+                schedule.push(...scheduleData);
+            } catch (altError) {
+                console.log('Alternative parsing method failed:', altError.message);
+            }
         }
 
         return schedule;

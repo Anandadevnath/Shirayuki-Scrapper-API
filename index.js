@@ -33,7 +33,6 @@ app.get('/', (req, res) => {
             { name: "Top 10 animes", path: "/top10" },
             { name: "Monthly Top 10 animes", path: "/monthly10" },
             { name: "Weekly Top 10 animes", path: "/weekly10" },
-            { name: "Weekly Schedule", path: "/weeklyschedule" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "A-Z animes based on alphabets", path: "/az-all-anime/all/?page=1" },
             { name: "Anime by Genre", path: "/genere/Action?page=2" },
