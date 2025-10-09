@@ -1,5 +1,7 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import connectDB from '../../config/database.js';
+import Episode from '../../models/Episode.js';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -65,6 +67,35 @@ async function withRetries(fn, maxRetries = 3, delayMs = 3000) {
 }
 
 export const scrapeSingleEpisode = async (episodeUrl) => {
+    const startTime = Date.now();
+    
+    try {
+        await connectDB();
+        
+        const existingEpisode = await Episode.findOne({
+            episode_url: episodeUrl,
+            cache_expires_at: { $gt: new Date() }
+        }).sort({ last_updated: -1 });
+
+        if (existingEpisode) {
+            console.log(`📋 Returning cached episode data for ${episodeUrl}`);
+            return {
+                success: true,
+                anime_id: existingEpisode.anime_id,
+                episode: existingEpisode.episode_number,
+                data: existingEpisode.streaming_data,
+                extraction_time_seconds: 0.001,
+                cached: true,
+                last_updated: existingEpisode.last_updated
+            };
+        }
+
+        console.log(`🔄 Scraping fresh episode data for ${episodeUrl}`);
+        
+    } catch (dbError) {
+        console.warn('⚠️ Database error, falling back to memory cache:', dbError.message);
+    }
+
     const cached = scrapeCache.get(episodeUrl);
     if (cached && cached.expiresAt > Date.now()) {
         return {
@@ -98,7 +129,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
         } catch (e) {
         }
 
-        const startTime = Date.now();
+        const scrapingStartTime = Date.now();
 
         await page.goto(episodeUrl, { waitUntil: 'domcontentloaded', timeout: 6000 });
 
@@ -351,26 +382,55 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                 all_ranges: allRanges.length > 0 ? allRanges : ['single-episode']
             };
 
-            try {
-                scrapeCache.set(episodeUrl, {
-                    expiresAt: Date.now() + CACHE_TTL_MS,
-                    result: {
-                        success: true,
-                        anime_id: animeId,
-                        episode: episodeNumber,
-                        data: streamingData
-                    }
-                });
-            } catch (e) { }
-
-            console.log(`💾 Skipping database save (disabled): ${animeTitle} - Episode ${episodeNumber}`);
-
-            return {
+            const result = {
                 success: true,
                 anime_id: animeId,
                 episode: episodeNumber,
-                data: streamingData,
-                extraction_time_seconds: parseFloat(((Date.now() - startTime) / 1000).toFixed(3))
+                data: streamingData
+            };
+
+            try {
+                scrapeCache.set(episodeUrl, {
+                    expiresAt: Date.now() + CACHE_TTL_MS,
+                    result: result
+                });
+            } catch (e) { }
+
+            try {
+                const cacheExpiresAt = new Date(Date.now() + CACHE_TTL_MS);
+                const newEpisode = new Episode({
+                    anime_id: animeId,
+                    episode_number: episodeNumber,
+                    episode_url: episodeUrl,
+                    streaming_data: streamingData,
+                    extraction_time_seconds: parseFloat(((Date.now() - scrapingStartTime) / 1000).toFixed(3)),
+                    cache_expires_at: cacheExpiresAt,
+                    last_updated: new Date()
+                });
+
+                await newEpisode.save();
+                console.log(`💾 Saved episode data to MongoDB: ${animeTitle} - Episode ${episodeNumber}`);
+
+                const oneDayAgo = new Date();
+                oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+                
+                const deleteResult = await Episode.deleteMany({
+                    cache_expires_at: { $lt: new Date() },
+                    last_updated: { $lt: oneDayAgo }
+                });
+                
+                if (deleteResult.deletedCount > 0) {
+                    console.log(`🧹 Cleaned up ${deleteResult.deletedCount} expired episode records`);
+                }
+            } catch (dbError) {
+                console.warn(`⚠️ Failed to save episode to database: ${dbError.message}`);
+            }
+
+            return {
+                ...result,
+                extraction_time_seconds: parseFloat(((Date.now() - scrapingStartTime) / 1000).toFixed(3)),
+                cached: false,
+                saved_to_db: true
             };
         } else {
             console.log(`❌ No valid streaming link found for episode after ${maxAttempts} attempts`);
@@ -408,7 +468,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                 error: 'No valid streaming iframe found after multiple attempts',
                 episode_url: episodeUrl,
                 debug: debugInfo,
-                extraction_time_seconds: parseFloat(((Date.now() - startTime) / 1000).toFixed(3))
+                extraction_time_seconds: parseFloat(((Date.now() - scrapingStartTime) / 1000).toFixed(3))
             };
         }
 
@@ -418,7 +478,7 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
             success: false,
             error: error && error.message ? error.message : String(error),
             episode_url: episodeUrl,
-            extraction_time_seconds: typeof startTime === 'number' ? parseFloat(((Date.now() - startTime) / 1000).toFixed(3)) : null
+            extraction_time_seconds: parseFloat(((Date.now() - startTime) / 1000).toFixed(3))
         };
     } finally {
         try {
