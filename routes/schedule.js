@@ -58,15 +58,17 @@ router.get('/', async (req, res) => {
         const duration = (Date.now() - start) / 1000;
 
         // Store in MongoDB
-        const newSchedule = new Schedule({
-            week_id: currentWeekId,
-            schedule_data: scheduleData,
-            extraction_time_seconds: duration,
-            total_episodes: scheduleData.length,
-            last_updated: new Date()
-        });
+        const savedSchedule = await Schedule.findOneAndUpdate(
+            { week_id: currentWeekId },
+            {
+                schedule_data: scheduleData,
+                extraction_time_seconds: duration,
+                total_episodes: scheduleData.length,
+                last_updated: new Date()
+            },
+            { upsert: true, new: true }
+        );
 
-        await newSchedule.save();
         console.log(`💾 Saved schedule data to MongoDB: ${scheduleData.length} episodes`);
 
         // Clean up old data (keep only last 4 weeks)

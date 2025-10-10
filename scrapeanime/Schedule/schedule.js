@@ -22,7 +22,11 @@ async function scrapeSchedule() {
                 '--disable-features=VizDisplayCompositor',
                 '--disable-extensions',
                 '--memory-pressure-off',
-                '--max_old_space_size=4096'
+                '--max_old_space_size=4096',
+                '--disable-background-networking',
+                '--disable-sync',
+                '--disable-translate',
+                '--disable-ipc-flooding-protection'
             ]
         });
 
@@ -30,30 +34,30 @@ async function scrapeSchedule() {
 
         await page.setRequestInterception(true);
         page.on('request', (req) => {
-            if(['stylesheet', 'image', 'font', 'media'].includes(req.resourceType())) {
+            const resourceType = req.resourceType();
+            if(['stylesheet', 'image', 'font', 'media', 'texttrack', 'websocket', 'manifest', 'other'].includes(resourceType)) {
                 req.abort();
             } else {
                 req.continue();
             }
         });
 
-        await page.setViewport({ width: 1280, height: 720 });
+        await page.setViewport({ width: 1024, height: 576 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
         await page.goto('https://123animehub.cc', {
-            waitUntil: 'networkidle0',
-            timeout: 15000
+            waitUntil: 'domcontentloaded',
+            timeout: 10000
         });
 
-        // Try to wait for body with multiple attempts
         let bodyFound = false;
-        for (let i = 0; i < 3 && !bodyFound; i++) {
+        for (let i = 0; i < 2 && !bodyFound; i++) {
             try {
-                await page.waitForSelector('body', { timeout: 5000 });
+                await page.waitForSelector('body', { timeout: 3000 });
                 bodyFound = true;
             } catch (e) {
                 console.log(`Body selector attempt ${i + 1} failed, retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
         }
 
@@ -73,7 +77,7 @@ async function scrapeSchedule() {
             console.log('Schedule trigger failed, continuing with static content...');
         }
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         const content = await page.content();
         const $ = cheerio.load(content);
