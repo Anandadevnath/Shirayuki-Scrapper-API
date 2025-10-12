@@ -1,6 +1,6 @@
 # 🌸 Shirayuki Anime Scraper API
 
-A comprehensive anime scraping API that provides anime information, streaming links, and search functionality from various anime sources.
+It is a anime scraping API that provides anime information, streaming links, and search functionality from HiAnime and 123animehub.
 
 ## 🎯 Goals of this Website
 
@@ -472,13 +472,6 @@ All error responses follow this format:
 }
 ````
 
-Common HTTP status codes:
-
-- `200` - Success
-- `400` - Bad Request (missing required parameters)
-- `404` - Not Found (invalid endpoint or anime not found)
-- `500` - Internal Server Error (scraping failure)
-
 ## 🛠️ Technologies Used
 
 - **Node.js** - Runtime environment
@@ -487,23 +480,48 @@ Common HTTP status codes:
 - **Cheerio** - Server-side HTML parsing
 - **Puppeteer** - Browser automation for complex scraping
 
-## 📝 Rate Limiting
+## � Deployment
 
-Please be respectful when using this API:
+You can deploy it on any cloud service that supports Puppeteer
 
-- Avoid making too many concurrent requests
-- Implement reasonable delays between requests
-- Cache responses when possible
+### ☁️ Cloud Platforms with Puppeteer Support
 
-## 🤝 Contributing
+1. **Railway** ⭐ (Recommended)
+   - Built-in Puppeteer support
+   - Easy deployment with Git integration
+   - Automatic SSL certificates
+   - Generous free tier
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
+2. **Render**
+   - Native Puppeteer support
+   - Free tier available
+   - Automatic builds from GitHub
+   - Built-in environment variables
 
-## 📄 License
+3. **Heroku**
+   - Requires buildpack for Puppeteer
+   - Add `heroku/nodejs` and `jontewks/puppeteer` buildpacks
+   - Free tier discontinued, but hobby tier available
+
+
+### 📦 Deployment Configuration
+
+For most platforms, add these environment variables:
+```bash
+NODE_ENV=production
+PORT=5000
+PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage
+```
+
+### 🐳 Docker Deployment
+
+The included `Dockerfile` is optimized for cloud deployment:
+```bash
+docker build -t shirayuki-api .
+docker run -p 5000:5000 shirayuki-api
+```
+
+## �📄 License
 
 This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
 
