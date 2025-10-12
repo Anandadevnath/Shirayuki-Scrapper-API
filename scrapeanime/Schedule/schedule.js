@@ -61,7 +61,6 @@ async function scrapeSchedule() {
             }
         }
 
-        // Try to trigger schedule loading with error handling
         try {
             await page.evaluate(() => {
                 if (typeof showschedulemenu === 'function') {
@@ -113,7 +112,6 @@ async function scrapeSchedule() {
             }
         });
 
-        // If still no schedule found, try alternative approach with error handling
         if (schedule.length === 0) {
             try {
                 const scheduleData = await page.$$eval('.scheduletitle, .schedulelist, .airtime', elements => {

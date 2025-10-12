@@ -1,10 +1,5 @@
 import { fetchAndLoad } from '../../service/scraperService.js';
 
-/**
- * Scrapes detailed anime information from an individual anime page
- * @param {string} animeUrl - The URL of the anime detail page
- * @returns {Object} - Object containing detailed anime information
- */
 export async function scrapeAnimeDetails(animeUrl) {
   if (!animeUrl) return null;
 
@@ -24,7 +19,6 @@ export async function scrapeAnimeDetails(animeUrl) {
       producers: []
     };
 
-    // Extract details from the anime info section
     $('.anisc-info .item').each((i, item) => {
       const $item = $(item);
       const label = $item.find('.item-head').text().trim().toLowerCase();
@@ -84,7 +78,6 @@ export async function scrapeAnimeDetails(animeUrl) {
       }
     });
 
-    // Extract description/synopsis
     const descriptionSelectors = [
       '.film-description .text',
       '.anisc-detail .film-description .text',
@@ -101,14 +94,13 @@ export async function scrapeAnimeDetails(animeUrl) {
         let desc = descElement.text().trim();
         // Clean up common unwanted text
         desc = desc.replace(/^(Description|Synopsis|Overview):\s*/i, '');
-        if (desc && desc.length > 50) { // Only use if it's substantial content
+        if (desc && desc.length > 50) { 
           details.description = desc;
           break;
         }
       }
     }
 
-    // Alternative selectors if the above doesn't work
     if (!details.malScore) {
       const scoreText = $('.film-stats .tick .tick-pg, .score').text();
       const scoreMatch = scoreText.match(/(\d+\.?\d*)/);
@@ -117,7 +109,6 @@ export async function scrapeAnimeDetails(animeUrl) {
       }
     }
 
-    // Try alternative genre extraction
     if (details.genres.length === 0) {
       $('.film-stats .item .name a, .genres a').each((i, genreEl) => {
         const genre = $(genreEl).text().trim();

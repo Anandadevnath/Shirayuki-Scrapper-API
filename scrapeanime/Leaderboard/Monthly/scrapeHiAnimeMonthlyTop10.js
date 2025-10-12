@@ -15,16 +15,14 @@ export const scrapeHiAnimeMonthlyTop10 = async () => {
         const results = [];
         const processedTitles = new Set();
 
-        // Get monthly top anime section
         let monthlySection = $('#top-viewed-month.anif-block-ul.anif-block-chart.tab-pane');
         if (!monthlySection.length) {
-            monthlySection = $('.anif-block-ul.anif-block-chart.tab-pane').eq(2); // Monthly is usually the 3rd tab
+            monthlySection = $('.anif-block-ul.anif-block-chart.tab-pane').eq(2); 
         }
 
         if (monthlySection.length) {
             console.log('✅ Found monthly section');
             
-            // Get top items (rank 1-3)
             const topItems = monthlySection.find('.item-top');
             topItems.each((index, item) => {
                 if (results.length >= 10) return false;
@@ -34,7 +32,6 @@ export const scrapeHiAnimeMonthlyTop10 = async () => {
                     const imageElement = $(item).find('.film-poster img');
                     const image = imageElement.attr('data-src') || imageElement.attr('src') || null;
                     
-                    // Extract sub/dub episode numbers as arrays
                     const subEpisodes = [];
                     const dubEpisodes = [];
                     $(item).find('.tick-item').each((_, tick) => {
@@ -64,7 +61,6 @@ export const scrapeHiAnimeMonthlyTop10 = async () => {
                 }
             });
 
-            // Get regular list items (rank 4-10)
             const listItems = monthlySection.find('li:not(.item-top)');
             listItems.each((index, item) => {
                 if (results.length >= 10) return false;
@@ -74,7 +70,6 @@ export const scrapeHiAnimeMonthlyTop10 = async () => {
                     const imageElement = $(item).find('.film-poster img');
                     const image = imageElement.attr('data-src') || imageElement.attr('src') || null;
                     
-                    // Extract sub/dub episode numbers as arrays
                     const subEpisodes = [];
                     const dubEpisodes = [];
                     $(item).find('.tick-item').each((_, tick) => {
@@ -109,7 +104,6 @@ export const scrapeHiAnimeMonthlyTop10 = async () => {
 
         console.log(`✅ Found ${results.length} monthly anime titles`);
 
-        // Only return top 10
         const finalResults = results.slice(0, 10).map((anime, idx) => ({
             index: idx + 1,
             rank: anime.rank,
@@ -119,7 +113,6 @@ export const scrapeHiAnimeMonthlyTop10 = async () => {
             sub: anime.sub
         }));
 
-        // Return as object with index as key
         const resultObj = {};
         finalResults.forEach(anime => {
             resultObj[anime.index] = anime;
@@ -130,7 +123,6 @@ export const scrapeHiAnimeMonthlyTop10 = async () => {
 
     } catch (error) {
         console.error('❌ Error scraping HiAnime Monthly:', error.message);
-        // Return fallback data if scraping fails
         return {
             1: {
                 index: 1,

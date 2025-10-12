@@ -11,7 +11,6 @@ export async function scrapeAnimeByGenre(genre, page = 1) {
 	$('.film-list .item').each((i, el) => {
 		const title = $(el).find('.name').text().trim();
 		
-		// Extract image 
 		const imgElement = $(el).find('.film-poster img, .poster img, img').first();
 		let image = imgElement.attr('data-src') || 
 				   imgElement.attr('src') || 

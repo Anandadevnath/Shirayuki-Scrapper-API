@@ -513,8 +513,8 @@ This API is for educational and personal use only. Please respect the terms of s
 
 ## 🔗 Links
 
-- [GitHub Repository](https://github.com/Anandadevnath/anime-mega-stream-api)
-- [Issues](https://github.com/Anandadevnath/anime-mega-stream-api/issues)
+- [GitHub Repository](https://github.com/Anandadevnath/Shirayuki-Scrapper-API)
+- [Issues](https://github.com/Anandadevnath/Shirayuki-Scrapper-API/issues)
 
 ---
 

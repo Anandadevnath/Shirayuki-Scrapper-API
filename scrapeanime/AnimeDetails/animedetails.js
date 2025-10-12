@@ -25,7 +25,6 @@ router.get('/anime/:slug', async (req, res) => {
       description = $('.desc').text().replace(/\s+/g, ' ').trim();
     }
 
-    // Meta info
     let type = '', country = '', genres = [], status = '', released = '', quality = '';
     $('.meta').each((i, el) => {
       const meta = $(el);
@@ -41,7 +40,6 @@ router.get('/anime/:slug', async (req, res) => {
         if (key === 'released:') released = value.text().trim();
       });
     });
-
 
     // Quality
     const qualityDiv = $("div:contains('Quality:')");

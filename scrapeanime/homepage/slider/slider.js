@@ -14,12 +14,12 @@ export default function scrapeSlider($, resolveUrl, source) {
       href = href ? resolveUrl(href) : null;
 
       let title = el$.find('.desi-head-title').text() ||
-                 el$.find('.film-title').text() || 
-                 el$.find('.title').text() || 
-                 el$.find('h3').text() || 
-                 a.attr('title') || 
-                 el$.find('img').attr('alt') || 
-                 el$.find('.film-title').attr('data-iname') || null;
+        el$.find('.film-title').text() ||
+        el$.find('.title').text() ||
+        el$.find('h3').text() ||
+        a.attr('title') ||
+        el$.find('img').attr('alt') ||
+        el$.find('.film-title').attr('data-iname') || null;
       if (title) title = title.trim();
 
       let img = null;
@@ -28,28 +28,28 @@ export default function scrapeSlider($, resolveUrl, source) {
       if (!img) img = el$.attr('data-background') || el$.attr('data-image') || null;
       if (img) img = resolveUrl(img);
 
-      let description = el$.find('.desi-description').text() || 
-                       el$.closest('.swiper-slide').find('.desi-description').text() ||
-                       el$.parent().find('.desi-description').text() ||
-                       el$.find('.description').text() || 
-                       el$.find('.synopsis').text() || 
-                       el$.find('.summary').text() || 
-                       el$.find('[class*="desc"]').text() || null;
+      let description = el$.find('.desi-description').text() ||
+        el$.closest('.swiper-slide').find('.desi-description').text() ||
+        el$.parent().find('.desi-description').text() ||
+        el$.find('.description').text() ||
+        el$.find('.synopsis').text() ||
+        el$.find('.summary').text() ||
+        el$.find('[class*="desc"]').text() || null;
       if (description) description = description.trim();
 
       let isTV = el$.find('.scd-item').filter((i, elem) => {
-                  const $elem = $(elem);
-                  return $elem.find('.fas.fa-play-circle').length > 0 && $elem.text().includes('TV');
-                }).length > 0 ||
-                el$.closest('.swiper-slide').find('.scd-item').filter((i, elem) => {
-                  const $elem = $(elem);
-                  return $elem.find('.fas.fa-play-circle').length > 0 && $elem.text().includes('TV');
-                }).length > 0 ||
-                el$.find('[class*="tv"]').length > 0 ||
-                el$.find('.film-detail .fd-infor .fdi-item').filter((i, elem) => {
-                  return $(elem).text().toLowerCase().includes('tv');
-                }).length > 0 ||
-                (title && title.toLowerCase().includes('season'));
+        const $elem = $(elem);
+        return $elem.find('.fas.fa-play-circle').length > 0 && $elem.text().includes('TV');
+      }).length > 0 ||
+        el$.closest('.swiper-slide').find('.scd-item').filter((i, elem) => {
+          const $elem = $(elem);
+          return $elem.find('.fas.fa-play-circle').length > 0 && $elem.text().includes('TV');
+        }).length > 0 ||
+        el$.find('[class*="tv"]').length > 0 ||
+        el$.find('.film-detail .fd-infor .fdi-item').filter((i, elem) => {
+          return $(elem).text().toLowerCase().includes('tv');
+        }).length > 0 ||
+        (title && title.toLowerCase().includes('season'));
 
       let duration = null;
       let durationEl = el$.find('.scd-item').filter((i, elem) => {
@@ -80,18 +80,18 @@ export default function scrapeSlider($, resolveUrl, source) {
         releaseDate = dateText || null;
       }
 
-      let quality = el$.find('.scd-item .quality').text() || 
-                   el$.closest('.swiper-slide').find('.scd-item .quality').text() ||
-                   el$.find('.quality').text() || 
-                   el$.find('[class*="quality"]').text() || 
-                   el$.find('.film-poster-quality').text() ||
-                   el$.find('.badge').text() ||
-                   el$.find('.resolution').text() || null;
+      let quality = el$.find('.scd-item .quality').text() ||
+        el$.closest('.swiper-slide').find('.scd-item .quality').text() ||
+        el$.find('.quality').text() ||
+        el$.find('[class*="quality"]').text() ||
+        el$.find('.film-poster-quality').text() ||
+        el$.find('.badge').text() ||
+        el$.find('.resolution').text() || null;
       if (quality) quality = quality.trim();
 
       let subtitles = null;
       let dubbed = false;
-      
+
       let subEl = el$.find('.tick-item').filter((i, elem) => {
         return $(elem).find('.fas.fa-closed-captioning').length > 0;
       });
