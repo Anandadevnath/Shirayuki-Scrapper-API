@@ -3,7 +3,6 @@ import scrapeMostPopular from './most_popular/mostPopular.js';
 import scrapeMostFavorite from './most_favorite/mostFavorite.js';
 import scrapeRecentlyUpdated from './recently_updated/recentlyUpdated.js';
 import scrapeSlider from './slider/slider.js';
-import scrapeLatest from './latest/latest.js';
 import scrapeTrending from './trending/trending.js';
 import { fetchAndLoad, resolveUrlFactory } from '../../service/scraperService.js';
 
@@ -48,50 +47,38 @@ async function scrapeSite(url, base, source, includeDetails = false) {
 	const items = [];
 
 	try {
-		const top = await scrapeTopAiring($, resolveUrl, source, includeDetails);
-		if (top && top.length) items.push(...top);
-	} catch (e) {
-	}
+		   const top = await scrapeTopAiring($, resolveUrl, source, includeDetails);
+		   if (top && top.length) items.push(...top);
+	   } catch (e) {}
 
-	try {
-		const popular = await scrapeMostPopular($, resolveUrl, source, includeDetails);
-		if (popular && popular.length) items.push(...popular);
-	} catch (e) {
-	}
+	   try {
+		   const popular = await scrapeMostPopular($, resolveUrl, source, includeDetails);
+		   if (popular && popular.length) items.push(...popular);
+	   } catch (e) {}
 
-	try {
-		const fav = await scrapeMostFavorite($, resolveUrl, source, includeDetails);
-		if (fav && fav.length) items.push(...fav);
-	} catch (e) {
-	}
+	   try {
+		   const fav = await scrapeMostFavorite($, resolveUrl, source, includeDetails);
+		   if (fav && fav.length) items.push(...fav);
+	   } catch (e) {}
 
-	try {
-		if (source === '123animehub') {
-			const recent = scrapeRecentlyUpdated($, resolveUrl, source);
-			if (recent && recent.length) items.push(...recent);
-		}
-	} catch (e) {
-	}
+	   try {
+		   if (source === '123animehub') {
+			   const recent = scrapeRecentlyUpdated($, resolveUrl, source);
+			   if (recent && recent.length) items.push(...recent);
+		   }
+	   } catch (e) {}
 
-	try {
-		if (source !== '123animehub') {
-			const slider = scrapeSlider($, resolveUrl, source);
-			if (slider && slider.length) items.push(...slider);
-		}
-	} catch (e) {
-	}
+	   try {
+		   if (source !== '123animehub') {
+			   const slider = scrapeSlider($, resolveUrl, source);
+			   if (slider && slider.length) items.push(...slider);
+		   }
+	   } catch (e) {}
 
-	try {
-		const latest = scrapeLatest($, resolveUrl, source);
-		if (latest && latest.length) items.push(...latest);
-	} catch (e) {
-	}
-
-	try {
-		const trending = await scrapeTrending($, resolveUrl, source, includeDetails);
-		if (trending && trending.length) items.push(...trending);
-	} catch (e) {
-	}
+	   try {
+		   const trending = await scrapeTrending($, resolveUrl, source, includeDetails);
+		   if (trending && trending.length) items.push(...trending);
+	   } catch (e) {}
 
 	const seen = new Set();
 	const deduped = [];
