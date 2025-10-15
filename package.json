@@ -1,28 +1,33 @@
 {
-  "name": "mega-stream-api",
+  "name": "shirayuki-anime-scraper-api",
   "version": "1.0.0",
-  "description": "Anime scraping API with streaming links",
+  "description": "A comprehensive anime scraping API that provides anime information, streaming links, and search functionality from HiAnime and other popular anime streaming platforms",
   "keywords": [
     "anime",
     "scraping",
     "streaming",
-    "api"
+    "api",
+    "hianime",
+    "shirayuki",
+    "anime-api",
+    "scraper"
   ],
-  "homepage": "https://github.com/Anandadevnath/anime-mega-stream-api#readme",
+  "homepage": "https://github.com/Anandadevnath/Shirayuki-Scrapper-API#readme",
   "bugs": {
-    "url": "https://github.com/Anandadevnath/anime-mega-stream-api/issues"
+    "url": "https://github.com/Anandadevnath/Shirayuki-Scrapper-API/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Anandadevnath/anime-mega-stream-api.git"
+    "url": "git+https://github.com/Anandadevnath/Shirayuki-Scrapper-API.git"
   },
   "license": "ISC",
-  "author": "",
+  "author": "Anandadevnath",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js"
+    "dev": "node index.js",
+    "test": "echo \"Warning: no test specified\" && exit 0"
   },
   "dependencies": {
     "axios": "^1.11.0",

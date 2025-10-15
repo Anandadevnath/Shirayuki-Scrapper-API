@@ -1,20 +1,27 @@
 export default function scrapeTrending($, resolveUrl, source) {
   const items = [];
 
-  const selectors = ['.swiper-slide.item-qtip', '.trending-list .swiper-slide', '.block_area-content .swiper-slide'];
+  const selectors = [
+    '#trending-home .swiper-slide.item-qtip', 
+    '.trending-list .swiper-slide.item-qtip',
+    '.swiper-slide.item-qtip.loaded',
+    '.swiper-slide.item-qtip'
+  ];
 
   for (const sel of selectors) {
     const found = $(sel);
+    
     if (!found || !found.length) continue;
 
-    found.slice(0, 6).each((i, el) => {
+    found.each((i, el) => {
       const el$ = $(el);
       
-      let title = el$.find('.film-title.dynamic-name').attr('data-jname') || 
+      let title = el$.find('.film-title.dynamic-name').text() || 
                  el$.find('.film-title').text() || 
-                 el$.find('[data-jname]').attr('data-jname') ||
                  el$.find('a').attr('title') || 
-                 el$.find('.title').text() || null;
+                 el$.find('.title').text() ||
+                 el$.find('.film-title.dynamic-name').attr('data-jname') ||
+                 el$.find('[data-jname]').attr('data-jname') || null;
       if (title) title = title.trim();
 
       let href = el$.find('a.film-poster').attr('href') || 
@@ -41,6 +48,7 @@ export default function scrapeTrending($, resolveUrl, source) {
 
       if (title && href) {
         const item = {
+          index: i + 1, 
           title: title || null,
           href: href || null,
           image: image || null,
@@ -52,8 +60,8 @@ export default function scrapeTrending($, resolveUrl, source) {
       }
     });
 
-    if (items.length) break;
+    if (items.length >= 8) break;
   }
-
+  
   return items;
 }

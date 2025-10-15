@@ -96,10 +96,12 @@ async function scrapeSite(url, base, source, includeDetails = false) {
 	const seen = new Set();
 	const deduped = [];
 	for (const it of items) {
-		const key = (it.href || it.title || it.image || '').toString().toLowerCase();
-		if (!key) continue;
-		if (!seen.has(key)) {
-			seen.add(key);
+		const contentKey = (it.href || it.title || it.image || '').toString().toLowerCase();
+		const sectionKey = `${contentKey}::${it.section || 'unknown'}`;
+		
+		if (!contentKey) continue;
+		if (!seen.has(sectionKey)) {
+			seen.add(sectionKey);
 			deduped.push(it);
 		}
 	}
@@ -129,10 +131,12 @@ export async function scrapeHomepage(includeDetails = false) {
 	const seen = new Set();
 	const deduped = [];
 	for (const it of combined) {
-		const key = (it.href || it.title || it.image || '').toString().toLowerCase();
-		if (!key) continue;
-		if (!seen.has(key)) {
-			seen.add(key);
+		const contentKey = (it.href || it.title || it.image || '').toString().toLowerCase();
+		const sectionKey = `${contentKey}::${it.section || 'unknown'}`;
+		
+		if (!contentKey) continue;
+		if (!seen.has(sectionKey)) {
+			seen.add(sectionKey);
 			deduped.push(it);
 		}
 	}

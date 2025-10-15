@@ -1,0 +1,19 @@
+# Files to exclude from npm package
+.env
+.env.*
+node_modules/
+.git/
+.gitignore
+*.log
+npm-debug.log*
+.DS_Store
+.vscode/
+coverage/
+.nyc_output/
+test/
+tests/
+*.test.js
+*.spec.js
+README-dev.md
+docs/
+.github/
