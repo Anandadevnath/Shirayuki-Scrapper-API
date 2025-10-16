@@ -82,7 +82,6 @@ export default function scrapeTrending($, resolveUrl, source) {
           source,
           section: 'trending'
         };
-        // attempt to set japanese from multiple attribute locations
         const candidates = [
           el$.find('.film-title.dynamic-name').attr('data-jname'),
           el$.find('.film-title').attr('data-jname'),
@@ -93,7 +92,6 @@ export default function scrapeTrending($, resolveUrl, source) {
         for (const c of candidates) {
           if (c && typeof c === 'string') { item.japanese = romanizeJapanese(c.trim()); break; }
         }
-        // fallback: if title contains Japanese characters, romanize the title
         if (!item.japanese && title && japaneseCharRE.test(title)) {
           item.japanese = romanizeJapanese(title);
         }

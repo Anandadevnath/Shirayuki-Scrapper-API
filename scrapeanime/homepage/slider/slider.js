@@ -148,7 +148,6 @@ export default function scrapeSlider($, resolveUrl, source) {
       }
 
       if (href || title) {
-        // Only include items from hianime source or with hianime URLs and limit to first 8 items
         if (href && (href.includes('hianime.to') || href.includes('/watch/')) && items.length < 8) {
           const item = {
             title: title || null,
@@ -165,7 +164,6 @@ export default function scrapeSlider($, resolveUrl, source) {
             source,
             section: 'slider'
           };
-          // try to get native title from multiple attribute locations
           const candidates = [
             a.attr('data-jname'), a.attr('data-iname'), a.attr('title'),
             el$.find('.film-title').attr('data-jname'), el$.find('.film-title').attr('data-iname'),
@@ -174,7 +172,6 @@ export default function scrapeSlider($, resolveUrl, source) {
           for (const c of candidates) {
             if (c && typeof c === 'string') { item.japanese = romanizeJapanese(c.trim()); break; }
           }
-          // fallback: if title contains Japanese characters, romanize the title
           if (!item.japanese && title && japaneseCharRE.test(title)) {
             item.japanese = romanizeJapanese(title);
           }

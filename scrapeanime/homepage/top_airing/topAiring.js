@@ -90,7 +90,6 @@ export default function scrapeTopAiring($, resolveUrl, source) {
       let title = a.attr('title') || a.attr('data-jname') || a.text() || null;
       if (title) title = title.trim();
 
-  // attempt to get the Japanese raw name (data-jname often contains native title)
   let japaneseRaw = a.attr('data-jname') || a.attr('data-jtitle') || el$.find('h3.film-name').attr('data-jname') || null;
   if (japaneseRaw && typeof japaneseRaw === 'string') japaneseRaw = japaneseRaw.trim();
   const japanese = japaneseRaw ? romanizeJapanese(japaneseRaw) : null;
