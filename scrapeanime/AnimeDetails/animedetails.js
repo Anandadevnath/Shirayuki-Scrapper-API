@@ -15,7 +15,10 @@ router.get('/anime/:slug', async (req, res) => {
     const title = $('h2.title').text().trim() || $('h1').first().text().trim();
 
     // Image
-    const image = $('.thumb img').attr('src') || $('img').first().attr('src');
+    let image = $('.thumb img').attr('src') || $('img').first().attr('src');
+    if (image && image.startsWith('/')) {
+      image = `https://123animehub.cc${image}`;
+    }
 
     // Description
     let description = '';
@@ -25,6 +28,7 @@ router.get('/anime/:slug', async (req, res) => {
       description = $('.desc').text().replace(/\s+/g, ' ').trim();
     }
 
+    // Metadata
     let type = '', country = '', genres = [], status = '', released = '', quality = '';
     $('.meta').each((i, el) => {
       const meta = $(el);
@@ -66,7 +70,10 @@ router.get('/anime/:slug', async (req, res) => {
       quality
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch anime details', details: error.message });
+    res.status(500).json({
+      error: 'Failed to fetch anime details',
+      details: error.message
+    });
   }
 });
 
