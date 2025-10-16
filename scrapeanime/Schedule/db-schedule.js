@@ -17,7 +17,6 @@ export async function fetchScheduleFromDB() {
         }
         return doc.schedule_data;
     } catch (err) {
-        // Improved error logging for debugging
         console.error('Error fetching schedule from MongoDB:', err);
         throw new Error('MongoDB connection or query failed: ' + err.message);
     } finally {

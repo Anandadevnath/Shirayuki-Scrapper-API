@@ -15,7 +15,6 @@ router.get('/episode-stream', async (req, res) => {
             });
         }
 
-        // Validate episode number is numeric
         if (isNaN(episodeNumber) || episodeNumber < 1) {
             return res.status(400).json({
                 error: 'Episode number must be a positive integer',

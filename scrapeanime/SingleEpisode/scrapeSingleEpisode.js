@@ -67,9 +67,7 @@ async function withRetries(fn, maxRetries = 3, delayMs = 3000) {
 
 export const scrapeSingleEpisode = async (episodeUrl) => {
     const startTime = Date.now();
-    // MongoDB save/retrieval removed. Only in-memory cache is used.
     console.log(`🔄 Scraping episode data for ${episodeUrl}`);
-
     const cached = scrapeCache.get(episodeUrl);
     if (cached && cached.expiresAt > Date.now()) {
         return {
