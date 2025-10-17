@@ -30,6 +30,7 @@
     "test": "echo \"Warning: no test specified\" && exit 0"
   },
   "dependencies": {
+    "@koozaki/romaji-conv": "^2.0.32",
     "axios": "^1.11.0",
     "cheerio": "^1.1.2",
     "dotenv": "^17.0.1",
