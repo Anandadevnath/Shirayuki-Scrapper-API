@@ -39,7 +39,7 @@ app.get('/', (req, res) => {
             { name: "Search Anime", path: "/search?keyword=one%20piece" },
             { name: "Search Suggestions", path: "/search/suggestions?q=demon%20slayer" },
             { name: "Streaming url", path: "/episode-stream?id=one-piece-dub&ep=1" },
-            { name: "AnimeDetails by title", path: "/anime/sozai-saishuka-no-isekai-ryokouki" },
+            { name: "AnimeDetails by title", path: "/anime/one-piece" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "Schedule from DB", path: "/db-schedule" },
         ],
