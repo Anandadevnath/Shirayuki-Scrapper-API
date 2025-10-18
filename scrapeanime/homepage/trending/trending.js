@@ -1,12 +1,14 @@
 import romanizeJapanese from '../../../util/romanizeJapanese.js';
 
-export default function scrapeTrending($, resolveUrl, source) {
+import { fetchAndLoad } from '../../../service/scraperService.js';
+
+export default async function scrapeTrending($, resolveUrl, source) {
   const items = [];
 
   const japaneseCharRE = /[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/;
 
   const selectors = [
-    '#trending-home .swiper-slide.item-qtip', 
+    '#trending-home .swiper-slide.item-qtip',
     '.trending-list .swiper-slide.item-qtip',
     '.swiper-slide.item-qtip.loaded',
     '.swiper-slide.item-qtip'
@@ -14,31 +16,29 @@ export default function scrapeTrending($, resolveUrl, source) {
 
   for (const sel of selectors) {
     const found = $(sel);
-    
     if (!found || !found.length) continue;
 
     found.each((i, el) => {
       const el$ = $(el);
-      
-      let title = el$.find('.film-title.dynamic-name').text() || 
-                 el$.find('.film-title').text() || 
-                 el$.find('a').attr('title') || 
-                 el$.find('.title').text() ||
-                 el$.find('.film-title.dynamic-name').attr('data-jname') ||
-                 el$.find('[data-jname]').attr('data-jname') || null;
+      let title = el$.find('.film-title.dynamic-name').text() ||
+        el$.find('.film-title').text() ||
+        el$.find('a').attr('title') ||
+        el$.find('.title').text() ||
+        el$.find('.film-title.dynamic-name').attr('data-jname') ||
+        el$.find('[data-jname]').attr('data-jname') || null;
       if (title) title = title.trim();
 
-      let href = el$.find('a.film-poster').attr('href') || 
-                el$.find('a').first().attr('href') || '';
+      let href = el$.find('a.film-poster').attr('href') ||
+        el$.find('a').first().attr('href') || '';
       href = href ? resolveUrl(href) : null;
 
       let image = null;
       const imgEl = el$.find('.film-poster-img').first();
       if (imgEl && imgEl.length) {
-        image = imgEl.attr('data-src') || 
-               imgEl.attr('data-lazy') || 
-               imgEl.attr('src') || 
-               imgEl.attr('data-original') || null;
+        image = imgEl.attr('data-src') ||
+          imgEl.attr('data-lazy') ||
+          imgEl.attr('src') ||
+          imgEl.attr('data-original') || null;
       }
       if (image) image = resolveUrl(image);
 
@@ -52,7 +52,7 @@ export default function scrapeTrending($, resolveUrl, source) {
 
       if (title && href) {
         const item = {
-          index: i + 1, 
+          index: i + 1,
           title: title || null,
           japanese: null,
           href: href || null,
@@ -77,9 +77,56 @@ export default function scrapeTrending($, resolveUrl, source) {
         items.push(item);
       }
     });
-
     if (items.length >= 8) break;
   }
-  
+
+  await Promise.all(items.map(async (item) => {
+    if (item.href) {
+      try {
+        const detail$ = await fetchAndLoad(item.href);
+
+        function extractFromElement(elem$) {
+          if (!elem$ || !elem$.length) return null;
+          const contents = elem$.contents().toArray();
+          for (const node of contents) {
+            if (node.type === 'text') {
+              const txt = (node.data || '').trim();
+              const m = txt.match(/\d+/);
+              if (m) return Number(m[0]);
+            }
+          }
+          const full = elem$.text().trim();
+          if (!full) return null;
+          const all = full.match(/\d+/g);
+          if (!all || !all.length) return null;
+          for (const s of all) {
+            if (s.length <= 5) return Number(s);
+          }
+          return Number(all[0].slice(0, 5));
+        }
+
+        // Prefer selecting tick items from the main info/detail container
+        // to avoid accidentally matching unrelated elements (e.g. sidebar)
+        const infoContainer = detail$('.anisc-content, .anisc-detail, .film-detail, .film-infor, .film-stats, .film-content').first();
+        let subEl = null;
+        let dubEl = null;
+        if (infoContainer && infoContainer.length) {
+          subEl = infoContainer.find('.tick-item.tick-sub').first();
+          dubEl = infoContainer.find('.tick-item.tick-dub').first();
+        } else {
+          // fallback to global selector if expected containers not found
+          subEl = detail$('.tick-item.tick-sub').first();
+          dubEl = detail$('.tick-item.tick-dub').first();
+        }
+
+        item.sub = extractFromElement(subEl);
+        item.dub = extractFromElement(dubEl);
+      } catch (e) {
+        item.sub = null;
+        item.dub = null;
+      }
+    }
+  }));
+
   return items;
 }
