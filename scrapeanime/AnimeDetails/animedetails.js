@@ -4,17 +4,14 @@ import * as cheerio from 'cheerio';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 puppeteer.use(StealthPlugin());
+import { toKatakana } from '@koozaki/romaji-conv';
+
 
 const router = express.Router();
-
-
-
-import { toKatakana } from '@koozaki/romaji-conv';
 
 function japanese_lang(engTitle) {
   return toKatakana(engTitle);
 }
-
 
 router.get('/anime/:slug', async (req, res) => {
   const { slug } = req.params;
@@ -56,8 +53,41 @@ router.get('/anime/:slug', async (req, res) => {
     const execution_time_ms = Date.now() - startTime;
     const execution_time_sec = (execution_time_ms / 1000).toFixed(3);
 
+    let rating = null;
+    try {
+      const imdbResp = await axios.get('https://api.imdbapi.dev/search/titles', {
+        params: { query: title, limit: 5 },
+        timeout: 3000
+      });
+      const results = imdbResp.data && imdbResp.data.titles ? imdbResp.data.titles : [];
+      if (results.length) {
+        const exact = results.find(r => r.title && r.title.toLowerCase() === title.toLowerCase());
+        const pick = exact || results[0];
+        if (pick && pick.rating && typeof pick.rating.aggregateRating !== 'undefined') {
+          rating = {
+            score: pick.rating.aggregateRating,
+            votes: pick.rating.voteCount || null
+          };
+        } else if (pick && pick.id) {
+          try {
+            const byId = await axios.get(`https://api.imdbapi.dev/titles/${encodeURIComponent(pick.id)}`, { timeout: 3000 });
+            if (byId.data && byId.data.rating && typeof byId.data.rating.aggregateRating !== 'undefined') {
+              rating = {
+                score: byId.data.rating.aggregateRating,
+                votes: byId.data.rating.voteCount || null
+              };
+            }
+          } catch (e) {
+          }
+        }
+      }
+    } catch (e) {
+      rating = null;
+    }
+
     res.json({
       title, image, description, type, country, genres, status, released, quality,
+      rating,
       execution_time_sec,
       japanese_lang: japanese_lang(title)
     });

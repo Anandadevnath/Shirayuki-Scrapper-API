@@ -25,8 +25,8 @@ It is a anime scraping API that provides anime information, streaming links, and
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/Anandadevnath/anime-mega-stream-api.git
-cd shirayuki-backend
+git clone https://github.com/Anandadevnath/Shirayuki-Scrapper-API.git
+cd Shirayuki-Scrapper-API
 ```
 
 2. Install dependencies:
@@ -38,10 +38,11 @@ npm install
 3. Start the server:
 
 ```bash
+npm install
 npm start
 ```
 
-The API will be available at `http://localhost:5000`
+The API will be available at `http://localhost:5000` by default. You can override the port with the `PORT` environment variable.
 
 ## 🎯 Usage
 
@@ -51,10 +52,10 @@ Base URL: `http://localhost:5000`
 
 ## 📍 API Endpoints
 
-### 🏠 Homepage
+### 🏠 Root & Homepage
 
-- **GET** `/home`
-- Get trending anime, latest releases, popular anime, and more
+- **GET** `/` — root information and a list of common endpoints
+- **GET** `/home` — Get trending anime, latest releases, popular anime, and more
 
 ### 🔍 Search
 
@@ -94,18 +95,16 @@ Base URL: `http://localhost:5000`
 
 ### 📺 Episode Streaming
 
-- **GET** `/episode-stream?id={anime_id}&ep={episode_number}`
-- Get streaming links for specific episode
-- **Parameters:**
-  - `id` (required): Anime ID/slug
-  - `ep` (required): Episode number
+- **GET** `/episode-stream?id={anime_id}&ep={episode_number}` — Get streaming links for a specific episode
+  - Parameters:
+    - `id` (required): Anime ID/slug (e.g. `one-piece-dub`)
+    - `ep` (required): Episode number (e.g. `1`)
 
 ### 📖 Anime Details
 
-- **GET** `/anime/{slug}`
-- Get detailed information about specific anime
-- **Parameters:**
-  - `slug` (required): Anime slug/identifier
+- **GET** `/anime/{slug}` — Get detailed information about a specific anime
+  - Parameters:
+    - `slug` (required): Anime slug/identifier (e.g. `one-piece`, `one-piece-dub`)
 
 ## 📊 Example Responses
 
@@ -444,7 +443,7 @@ GET /anime/one-piece-dub
 GET /episode-stream?id=one-piece-dub&ep=1000
 ```
 
-````json
+```json
 {
   "success": true,
   "anime_id": "one-piece-dub",
@@ -452,12 +451,11 @@ GET /episode-stream?id=one-piece-dub&ep=1000
   "data": {
     "title": "One Piece Dub",
     "episode_number": "1000",
-    "streaming_link": "https://play.bunnycdn.to/embed-3/UWxwb05ERkJXU1pUV1pXMFVrNEFBQXIv...",
-    "range_id": "997-1046",
-    "all_ranges": ["1-46", "47-96", "97-146", "147-196", "197-246", "247-296", "297-346", "347-396", "397-446", "447-496", "497-546", "547-596", "597-646", "647-696", "697-746", "747-796", "797-846", "847-896", "897-946", "947-996", "997-1046"]
+    "streaming_link": "https://play.bunnycdn.to/embed-3/UWxwb05ERkJXU1pUV1pXMFVrNEFBQXIv..."
   },
   "extraction_time_seconds": 5.408
 }
+```
 
 ## ⚠️ Error Handling
 
@@ -470,7 +468,7 @@ All error responses follow this format:
   "extraction_time_seconds": 0.123,
   "timestamp": "2025-10-08T16:54:26.438Z"
 }
-````
+```
 
 ## 🛠️ Technologies Used
 
@@ -487,12 +485,14 @@ You can deploy it on any cloud service that supports Puppeteer
 ### ☁️ Cloud Platforms with Puppeteer Support
 
 1. **Railway** ⭐ (Recommended)
+
    - Built-in Puppeteer support
    - Easy deployment with Git integration
    - Automatic SSL certificates
    - Generous free tier
 
 2. **Render**
+
    - Native Puppeteer support
    - Free tier available
    - Automatic builds from GitHub
@@ -503,10 +503,10 @@ You can deploy it on any cloud service that supports Puppeteer
    - Add `heroku/nodejs` and `jontewks/puppeteer` buildpacks
    - Free tier discontinued, but hobby tier available
 
-
 ### 📦 Deployment Configuration
 
 For most platforms, add these environment variables:
+
 ```bash
 NODE_ENV=production
 PORT=5000
@@ -516,6 +516,7 @@ PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage
 ### 🐳 Docker Deployment
 
 The included `Dockerfile` is optimized for cloud deployment:
+
 ```bash
 docker build -t shirayuki-api .
 docker run -p 5000:5000 shirayuki-api

@@ -1,9 +1,7 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
-
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 puppeteer.use(StealthPlugin());
 
 const scrapeCache = new Map();
@@ -45,24 +43,6 @@ async function getBrowser() {
         })();
     }
     return browserLaunchPromise;
-}
-
-async function withRetries(fn, maxRetries = 3, delayMs = 3000) {
-    let lastError;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            return await fn();
-        } catch (err) {
-            lastError = err;
-            if (err.message && /detached|navigation|timeout|net::ERR|crash|closed/i.test(err.message)) {
-                console.warn(`Retry ${attempt}/${maxRetries} after error: ${err.message}`);
-                await delay(delayMs * attempt);
-            } else {
-                throw err;
-            }
-        }
-    }
-    throw lastError;
 }
 
 export const scrapeSingleEpisode = async (episodeUrl) => {
@@ -270,86 +250,10 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                     .replace(/-/g, ' ')
                     .replace(/\b\w/g, l => l.toUpperCase());
             }
-
-            const episodeRanges = await page.evaluate(() => {
-                const ranges = [];
-
-                const rangeSpans = document.querySelectorAll('span[data-range-id]');
-
-                for (const span of rangeSpans) {
-                    const rangeText = span.textContent?.trim();
-                    const rangeId = span.getAttribute('data-range-id');
-
-                    if (rangeText && /^\d+\s*[-–]\s*\d+$/.test(rangeText)) {
-                        ranges.push({
-                            range_id: rangeId,
-                            range_text: rangeText.replace(/\s+/g, '').replace('–', '-')
-                        });
-                    }
-                }
-
-                if (ranges.length === 0) {
-                    const episodeRangeLists = document.querySelectorAll('ul.episodes_range, .episodes_range');
-
-                    for (const element of episodeRangeLists) {
-                        const rangeId = element.getAttribute('data-range-id');
-                        if (rangeId) {
-                            const textContent = element.textContent || '';
-                            const rangeMatch = textContent.match(/(\d+)\s*[-–]\s*(\d+)/);
-                            if (rangeMatch) {
-                                ranges.push({
-                                    range_id: rangeId,
-                                    range_text: `${rangeMatch[1]}-${rangeMatch[2]}`
-                                });
-                            }
-                        }
-                    }
-                }
-
-                if (ranges.length === 0) {
-                    const rangeElements = document.querySelectorAll('[class*="range"], [class*="episode"]');
-
-                    for (const element of rangeElements) {
-                        const textContent = element.textContent || '';
-                        const rangeMatch = textContent.match(/(\d+)\s*[-–]\s*(\d+)/);
-                        if (rangeMatch) {
-                            const rangeText = `${rangeMatch[1]}-${rangeMatch[2]}`;
-                            ranges.push({
-                                range_id: element.getAttribute('data-range-id') || rangeText,
-                                range_text: rangeText
-                            });
-                        }
-                    }
-                }
-
-                return ranges;
-            });
-
-            let currentRange = 'single-episode';
-            if (episodeRanges.length > 0 && episodeNumber !== 'Unknown') {
-                const currentEpNum = parseInt(episodeNumber);
-
-                for (const range of episodeRanges) {
-                    const [start, end] = range.range_text.split('-').map(n => parseInt(n.trim()));
-                    if (currentEpNum >= start && currentEpNum <= end) {
-                        currentRange = range.range_text;
-                        break;
-                    }
-                }
-            }
-
-            const allRanges = episodeRanges.map(range => range.range_text).sort((a, b) => {
-                const aStart = parseInt(a.split('-')[0]);
-                const bStart = parseInt(b.split('-')[0]);
-                return aStart - bStart;
-            });
-
             const streamingData = {
                 title: animeTitle,
                 episode_number: episodeNumber,
-                streaming_link: streamingLink,
-                range_id: currentRange,
-                all_ranges: allRanges.length > 0 ? allRanges : ['single-episode']
+                streaming_link: streamingLink
             };
 
             const result = {
