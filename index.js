@@ -9,9 +9,11 @@ import animeListRouter from './routes/anime-list.js';
 import animedetailsRouter from './scrapeanime/AnimeDetails/animedetails.js';
 import scheduleRouter from './routes/schedule.js';
 import dbScheduleRouter from './routes/db-schedule.js';
-
 import genreRouter from './routes/genre.js';
 import searchRouter from './routes/search.js';
+import ongingRouter from './routes/onging.js';
+import recentUpdatesRouter from './routes/recent_updates.js';
+import recentUpdatesDubRouter from './routes/recent_updates_dub.js';
 
 dotenv.config();
 const app = express();
@@ -24,13 +26,19 @@ app.use((req, res, next) => {
     next();
 });
 
-
 app.get('/', (req, res) => {
     res.json({
         message: " Welcome to Shirayuki Anime Scraper!",
         version: "1.0.0",
         endpoints: [
-            { name: "Homepage", path: "/home" },
+            {
+                home: [
+                    "/home",
+                    "/onging",
+                    "/recent_updates",
+                    "/recent_updates_dub",
+                ]
+            },
             { name: "Top 10 animes", path: "/top10" },
             { name: "Monthly Top 10 animes", path: "/monthly10" },
             { name: "Weekly Top 10 animes", path: "/weekly10" },
@@ -41,8 +49,8 @@ app.get('/', (req, res) => {
             { name: "Streaming url", path: "/episode-stream?id=one-piece-dub&ep=1" },
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
             { name: "Anime Schedule", path: "/schedule" },
-            { name: "Schedule from DB", path: "/db-schedule" },
-        ],
+            { name: "Schedule from DB", path: "/db-schedule" }
+        ]
     });
 });
 
@@ -57,6 +65,10 @@ app.use('/genere', genreRouter);
 app.use('/search', searchRouter);
 app.use('/az-all-anime', animeListRouter);
 app.use('/db-schedule', dbScheduleRouter);
+app.use('/onging', ongingRouter);
+app.use('/ongoing', ongingRouter);
+app.use('/recent_updates', recentUpdatesRouter);
+app.use('/recent_updates_dub', recentUpdatesDubRouter);
 
 const PORT = process.env.PORT || 5000;
 

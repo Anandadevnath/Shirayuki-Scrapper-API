@@ -1,42 +1,41 @@
 import scrapeTopAiring from './top_airing/topAiring.js';
 import scrapeMostPopular from './most_popular/mostPopular.js';
 import scrapeMostFavorite from './most_favorite/mostFavorite.js';
-import scrapeRecentlyUpdated from './recently_updated/recentlyUpdated.js';
 import scrapeSlider from './slider/slider.js';
 import scrapeTrending from './trending/trending.js';
 import { fetchAndLoad, resolveUrlFactory } from '../../service/scraperService.js';
 
 const cache = new Map();
-const CACHE_TTL = 2 * 60 * 1000; 
+const CACHE_TTL = 2 * 60 * 1000;
 
 function getCacheKey(url, includeDetails) {
-  return `${url}_${includeDetails}`;
+	return `${url}_${includeDetails}`;
 }
 
 function getFromCache(key) {
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-  return null;
+	const cached = cache.get(key);
+	if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+		return cached.data;
+	}
+	return null;
 }
 
 function setCache(key, data) {
-  cache.set(key, {
-    data,
-    timestamp: Date.now()
-  });
-  
-  if (cache.size > 10) {
-    const oldestKeys = Array.from(cache.keys()).slice(0, 5);
-    oldestKeys.forEach(key => cache.delete(key));
-  }
+	cache.set(key, {
+		data,
+		timestamp: Date.now()
+	});
+
+	if (cache.size > 10) {
+		const oldestKeys = Array.from(cache.keys()).slice(0, 5);
+		oldestKeys.forEach(key => cache.delete(key));
+	}
 }
 
 async function scrapeSite(url, base, source, includeDetails = false) {
 	const cacheKey = getCacheKey(url, includeDetails);
 	const cached = getFromCache(cacheKey);
-	
+
 	if (cached) {
 		return cached;
 	}
@@ -47,45 +46,37 @@ async function scrapeSite(url, base, source, includeDetails = false) {
 	const items = [];
 
 	try {
-		   const top = await scrapeTopAiring($, resolveUrl, source, includeDetails);
-		   if (top && top.length) items.push(...top);
-	   } catch (e) {}
+		const top = await scrapeTopAiring($, resolveUrl, source, includeDetails);
+		if (top && top.length) items.push(...top);
+	} catch (e) { }
 
-	   try {
-		   const popular = await scrapeMostPopular($, resolveUrl, source, includeDetails);
-		   if (popular && popular.length) items.push(...popular);
-	   } catch (e) {}
+	try {
+		const popular = await scrapeMostPopular($, resolveUrl, source, includeDetails);
+		if (popular && popular.length) items.push(...popular);
+	} catch (e) { }
 
-	   try {
-		   const fav = await scrapeMostFavorite($, resolveUrl, source, includeDetails);
-		   if (fav && fav.length) items.push(...fav);
-	   } catch (e) {}
+	try {
+		const fav = await scrapeMostFavorite($, resolveUrl, source, includeDetails);
+		if (fav && fav.length) items.push(...fav);
+	} catch (e) { }
+	try {
+		if (source !== '123animehub') {
+			const slider = scrapeSlider($, resolveUrl, source);
+			if (slider && slider.length) items.push(...slider);
+		}
+	} catch (e) { }
 
-	   try {
-		   if (source === '123animehub') {
-			   const recent = scrapeRecentlyUpdated($, resolveUrl, source);
-			   if (recent && recent.length) items.push(...recent);
-		   }
-	   } catch (e) {}
-
-	   try {
-		   if (source !== '123animehub') {
-			   const slider = scrapeSlider($, resolveUrl, source);
-			   if (slider && slider.length) items.push(...slider);
-		   }
-	   } catch (e) {}
-
-	   try {
-		   const trending = await scrapeTrending($, resolveUrl, source, includeDetails);
-		   if (trending && trending.length) items.push(...trending);
-	   } catch (e) {}
+	try {
+		const trending = await scrapeTrending($, resolveUrl, source, includeDetails);
+		if (trending && trending.length) items.push(...trending);
+	} catch (e) { }
 
 	const seen = new Set();
 	const deduped = [];
 	for (const it of items) {
 		const contentKey = (it.href || it.title || it.image || '').toString().toLowerCase();
 		const sectionKey = `${contentKey}::${it.section || 'unknown'}`;
-		
+
 		if (!contentKey) continue;
 		if (!seen.has(sectionKey)) {
 			seen.add(sectionKey);
@@ -94,7 +85,7 @@ async function scrapeSite(url, base, source, includeDetails = false) {
 	}
 
 	setCache(cacheKey, deduped);
-	
+
 	return deduped;
 }
 
@@ -120,7 +111,7 @@ export async function scrapeHomepage(includeDetails = false) {
 	for (const it of combined) {
 		const contentKey = (it.href || it.title || it.image || '').toString().toLowerCase();
 		const sectionKey = `${contentKey}::${it.section || 'unknown'}`;
-		
+
 		if (!contentKey) continue;
 		if (!seen.has(sectionKey)) {
 			seen.add(sectionKey);

@@ -28,15 +28,15 @@ function normalizeForCompare(s) {
     .trim();
 }
 
-export default async function scrapeRecentlyUpdated($, resolveUrl, source) {
+export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
   const items = [];
 
   $('div.widget').each((i, widget) => {
     const w$ = $(widget);
-    const title = w$.find('.widget-title .title, .widget-title h1.title').text() || w$.find('.widget-title').text() || '';
-    if (!/recently\s*updated/i.test(title)) return;
+    const dubContent = w$.find('.content[data-name="dub"]').first();
+    if (!dubContent || !dubContent.length) return;
 
-    w$.find('.film-list .item').slice(0, 15).each((j, item) => {
+    dubContent.find('.film-list .item').slice(0, 15).each((j, item) => {
       const el$ = $(item);
       const posterA = el$.find('a.poster').first();
       const nameA = el$.find('a.name').first();
@@ -77,7 +77,7 @@ export default async function scrapeRecentlyUpdated($, resolveUrl, source) {
       }
 
       if (href || titleText) {
-        items.push({ title: titleText || null, href: href || null, image: img || null, episode: episode, source, section: 'recently_updated', type: audio || null });
+        items.push({ title: titleText || null, href: href || null, image: img || null, episode: episode, source, section: 'recently_updated', type: 'dub' });
       }
     });
   });
@@ -89,19 +89,12 @@ export default async function scrapeRecentlyUpdated($, resolveUrl, source) {
     const key = title.toString().toLowerCase();
     if (imdbCache.has(key)) return imdbCache.get(key);
 
-    const cleaned = title.toString().replace(/\b(dub|sub)\b/gi, '').replace(/\s+/g, ' ').trim();
-    const queries = cleaned && cleaned.toLowerCase() !== title.toString().toLowerCase() ? [cleaned, title] : [title];
-
     try {
-      let results = [];
-      for (const q of queries) {
-        const resp = await axios.get('https://api.imdbapi.dev/search/titles', {
-          params: { query: q, limit: 8 },
-          timeout: 4000
-        });
-        results = resp.data && resp.data.titles ? resp.data.titles : [];
-        if (results && results.length) break;
-      }
+      const resp = await axios.get('https://api.imdbapi.dev/search/titles', {
+        params: { query: title, limit: 5 },
+        timeout: 4000
+      });
+      const results = resp.data && resp.data.titles ? resp.data.titles : [];
 
       if (!results.length) {
         imdbCache.set(key, null);
@@ -155,7 +148,8 @@ export default async function scrapeRecentlyUpdated($, resolveUrl, source) {
   const CONCURRENCY = 6;
   const enriched = await mapWithConcurrency(dedup, async (it) => {
     const rating = await fetchImdbRating(it.title || '');
-    return { title: it.title, href: it.href, image: it.image, episode: it.episode, source: it.source, section: it.section, type: it.type, rating };
+    const image = it.image || null;
+    return { title: it.title, href: it.href, image: image, episode: it.episode, source: it.source, section: it.section, type: it.type, rating };
   }, CONCURRENCY);
 
   return enriched;
