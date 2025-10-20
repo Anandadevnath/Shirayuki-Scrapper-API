@@ -138,3 +138,32 @@ export async function scrapeHomepage(includeDetails = false) {
 }
 
 export default scrapeHomepage;
+
+let homepageCache = null;
+let homepageCacheTs = 0;
+const HOMEPAGE_TTL = 60 * 1000; 
+
+export async function getHomepageCached(includeDetails = false) {
+	const keyTs = homepageCacheTs || 0;
+	if (homepageCache && (Date.now() - keyTs) < HOMEPAGE_TTL && homepageCache._includeDetails === includeDetails) {
+		return homepageCache.value;
+	}
+	try {
+		const res = await scrapeHomepage(includeDetails);
+		homepageCache = { value: res, timestamp: Date.now(), _includeDetails: includeDetails };
+		homepageCacheTs = Date.now();
+		return res;
+	} catch (e) {
+		if (homepageCache && homepageCache.value) return homepageCache.value;
+		throw e;
+	}
+}
+
+export function warmHomepageCache(intervalMs = HOMEPAGE_TTL) {
+	// run immediately
+	getHomepageCached(false).catch(() => {});
+	setInterval(() => {
+		// refresh without blocking
+		getHomepageCached(false).catch(() => {});
+	}, intervalMs);
+}

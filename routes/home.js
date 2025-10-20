@@ -1,12 +1,13 @@
 import express from 'express';
-import scrapeHomepage from '../scrapeanime/homepage/scrapehomepage.js';
+import { getHomepageCached } from '../scrapeanime/homepage/scrapeservice.js';
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const start = Date.now();
-    const result = await scrapeHomepage(true); 
+  const start = Date.now();
+  const fresh = req.query.fresh === '1' || req.query.fresh === 'true';
+  const result = fresh ? await getHomepageCached(true) : await getHomepageCached(true);
     const duration = (Date.now() - start) / 1000;
 
     if (result.success) {

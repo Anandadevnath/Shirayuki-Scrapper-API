@@ -14,6 +14,7 @@ import searchRouter from './routes/search.js';
 import ongingRouter from './routes/onging.js';
 import recentUpdatesRouter from './routes/recent_updates.js';
 import recentUpdatesDubRouter from './routes/recent_updates_dub.js';
+import { warmHomepageCache } from './scrapeanime/homepage/scrapeservice.js';
 
 dotenv.config();
 const app = express();
@@ -74,4 +75,10 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
     console.log(`🚀 Anime Scraper API v2.1 running at http://localhost:${PORT}`);
+    // warm homepage cache to reduce first-request latency (non-blocking)
+    try {
+        warmHomepageCache();
+    } catch (e) {
+        // ignore warm errors on startup
+    }
 });
