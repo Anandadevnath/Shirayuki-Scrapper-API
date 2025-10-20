@@ -141,20 +141,38 @@ export default scrapeHomepage;
 
 let homepageCache = null;
 let homepageCacheTs = 0;
-const HOMEPAGE_TTL = 60 * 1000; 
+const DEFAULT_HOMEPAGE_TTL = 60 * 1000; // 1 minute
+const HOMEPAGE_TTL = Number(process.env.HOME_CACHE_TTL_MS || DEFAULT_HOMEPAGE_TTL);
 
-export async function getHomepageCached(includeDetails = false) {
+// rate-limit forced refreshes to avoid hammering the origin sites when clients call ?fresh=1
+const DEFAULT_MIN_FORCE_INTERVAL = 60 * 1000; // 1 minute
+const MIN_FORCE_INTERVAL = Number(process.env.HOME_MIN_FORCE_INTERVAL_MS || DEFAULT_MIN_FORCE_INTERVAL);
+let lastForceAt = 0;
+
+export async function getHomepageCached(includeDetails = false, forceRefresh = false) {
 	const keyTs = homepageCacheTs || 0;
-	if (homepageCache && (Date.now() - keyTs) < HOMEPAGE_TTL && homepageCache._includeDetails === includeDetails) {
-		return homepageCache.value;
+	const isValid = homepageCache && (Date.now() - keyTs) < HOMEPAGE_TTL && homepageCache._includeDetails === includeDetails;
+
+	if (!forceRefresh && isValid) {
+		return { value: homepageCache.value, lastUpdated: homepageCache.timestamp };
 	}
+
+	// If force requested, enforce rate limit
+	if (forceRefresh && (Date.now() - lastForceAt) < MIN_FORCE_INTERVAL) {
+		// return cached value if available, otherwise proceed
+		if (homepageCache && homepageCache.value) {
+			return { value: homepageCache.value, lastUpdated: homepageCache.timestamp, rateLimited: true };
+		}
+	}
+
 	try {
+		lastForceAt = forceRefresh ? Date.now() : lastForceAt;
 		const res = await scrapeHomepage(includeDetails);
 		homepageCache = { value: res, timestamp: Date.now(), _includeDetails: includeDetails };
 		homepageCacheTs = Date.now();
-		return res;
+		return { value: homepageCache.value, lastUpdated: homepageCache.timestamp };
 	} catch (e) {
-		if (homepageCache && homepageCache.value) return homepageCache.value;
+		if (homepageCache && homepageCache.value) return { value: homepageCache.value, lastUpdated: homepageCache.timestamp, error: e };
 		throw e;
 	}
 }
@@ -166,4 +184,9 @@ export function warmHomepageCache(intervalMs = HOMEPAGE_TTL) {
 		// refresh without blocking
 		getHomepageCached(false).catch(() => {});
 	}, intervalMs);
+}
+
+export function getHomepageCacheMeta() {
+	if (!homepageCache) return null;
+	return { lastUpdated: homepageCache.timestamp, includeDetails: homepageCache._includeDetails };
 }
