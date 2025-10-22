@@ -6,7 +6,6 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const start = Date.now();
-    // details=1 will include more fields (slower scrapers), default is fast summary
     const includeDetails = req.query.details === '1' || req.query.details === 'true';
     const fresh = req.query.fresh === '1' || req.query.fresh === 'true';
 

@@ -1,4 +1,5 @@
 import romanizeJapanese from '../../../util/romanizeJapanese.js';
+import axios from 'axios';
 
 import { fetchAndLoad } from '../../../service/scraperService.js';
 
@@ -128,5 +129,114 @@ export default async function scrapeTrending($, resolveUrl, source) {
     }
   }));
 
-  return items;
+  // --- IMDb rating enrichment (same approach as recentlyUpdated)
+  async function mapWithConcurrency(list, mapper, limit) {
+    const results = new Array(list.length);
+    let idx = 0;
+    async function worker() {
+      while (true) {
+        const i = idx++;
+        if (i >= list.length) return;
+        try {
+          results[i] = await mapper(list[i], i);
+        } catch (e) {
+          results[i] = null;
+        }
+      }
+    }
+    const workers = [];
+    for (let i = 0; i < Math.min(limit, list.length); i++) workers.push(worker());
+    await Promise.all(workers);
+    return results;
+  }
+
+  function normalizeForCompare(s) {
+    if (!s) return '';
+    return s.toString().toLowerCase()
+      .replace(/\b(dub|sub|season|part|\(|\)|\:|\.|,|'|"|\[|\]|\{|\}|\b2nd\b|\b3rd\b|\b4th\b)\b/g, '')
+      .replace(/[^a-z0-9]+/g, '')
+      .trim();
+  }
+
+  const imdbCache = new Map();
+  async function fetchImdbRating(title, altTitle) {
+    if (!title && !altTitle) return null;
+    const key = (title || altTitle).toString().toLowerCase();
+    if (imdbCache.has(key)) return imdbCache.get(key);
+
+    const queriesSet = new Set();
+    try {
+      if (title) {
+        const cleaned = title.toString().replace(/\b(dub|sub)\b/gi, '').replace(/\s+/g, ' ').trim();
+        if (cleaned && cleaned.toLowerCase() !== title.toString().toLowerCase()) queriesSet.add(cleaned);
+        queriesSet.add(title);
+      }
+      if (altTitle) {
+        queriesSet.add(altTitle);
+      }
+    } catch (e) {
+      // fallback to title only
+      if (title) queriesSet.add(title);
+    }
+    const queries = Array.from(queriesSet);
+
+    try {
+      let results = [];
+      for (const q of queries) {
+        const resp = await axios.get('https://api.imdbapi.dev/search/titles', {
+          params: { query: q, limit: 8 },
+          timeout: 4000
+        });
+        results = resp.data && resp.data.titles ? resp.data.titles : [];
+        if (results && results.length) break;
+      }
+
+      if (!results.length) {
+        imdbCache.set(key, null);
+        return null;
+      }
+
+      const norm = normalizeForCompare(title);
+
+      let pick = results.find(r => r && r.title && normalizeForCompare(r.title) === norm && r.rating && typeof r.rating.aggregateRating !== 'undefined');
+      if (pick && pick.rating) {
+        imdbCache.set(key, pick.rating.aggregateRating);
+        return pick.rating.aggregateRating;
+      }
+
+      pick = results.find(r => r && r.rating && typeof r.rating.aggregateRating !== 'undefined');
+      if (pick && pick.rating) {
+        imdbCache.set(key, pick.rating.aggregateRating);
+        return pick.rating.aggregateRating;
+      }
+
+      for (const r of results) {
+        if (r && r.id) {
+          try {
+            const byId = await axios.get(`https://api.imdbapi.dev/titles/${encodeURIComponent(r.id)}`, { timeout: 3000 });
+            if (byId.data && byId.data.rating && typeof byId.data.rating.aggregateRating !== 'undefined') {
+              imdbCache.set(key, byId.data.rating.aggregateRating);
+              return byId.data.rating.aggregateRating;
+            }
+          } catch (e) {
+            // ignore per-item failure
+          }
+        }
+      }
+
+      imdbCache.set(key, null);
+      return null;
+    } catch (e) {
+      imdbCache.set(key, null);
+      return null;
+    }
+  }
+
+  const CONCURRENCY = 6;
+  const enriched = await mapWithConcurrency(items, async (it) => {
+    const rating = await fetchImdbRating(it.title || '', it.japanese || '');
+    return { ...it, rating };
+  }, CONCURRENCY);
+
+  return enriched.filter(Boolean);
 }

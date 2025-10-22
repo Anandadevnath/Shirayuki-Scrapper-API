@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import romanizeJapanese from '../../../util/romanizeJapanese.js';
 
 export const scrapeHiAnimeWeeklyTop10 = async () => {
     try {
@@ -157,6 +158,7 @@ export const scrapeHiAnimeWeeklyTop10 = async () => {
             index: idx + 1,
             rank: anime.rank,
             title: anime.title,
+            japanese: romanizeJapanese(anime.title) || anime.title,
             img: anime.image ? `${anime.image}?title=${encodeURIComponent(anime.title)}` : '',
             dub: anime.dub,
             sub: anime.sub,
