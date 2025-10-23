@@ -32,6 +32,22 @@ async function scrapeSchedule() {
 
         const page = await browser.newPage();
 
+        async function navigateWithRetries(url, opts = {}, attempts = 3) {
+            let lastErr;
+            for (let i = 0; i < attempts; i++) {
+                try {
+                    const options = Object.assign({ waitUntil: 'networkidle2', timeout: 30000 }, opts);
+                    await page.goto(url, options);
+                    return;
+                } catch (err) {
+                    lastErr = err;
+                    console.log(`navigate attempt ${i + 1} failed: ${err.message}`);
+                    await new Promise(r => setTimeout(r, 500 * (i + 1)));
+                }
+            }
+            throw lastErr;
+        }
+
         await page.setRequestInterception(true);
         page.on('request', (req) => {
             const resourceType = req.resourceType();
@@ -45,10 +61,8 @@ async function scrapeSchedule() {
         await page.setViewport({ width: 1024, height: 576 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
-        await page.goto('https://123animehub.cc', {
-            waitUntil: 'domcontentloaded',
-            timeout: 10000
-        });
+        // Use navigation with retries to reduce chance of transient navigation timeouts
+        await navigateWithRetries('https://123animehub.cc', { waitUntil: 'networkidle2', timeout: 30000 }, 3);
 
         let bodyFound = false;
         for (let i = 0; i < 2 && !bodyFound; i++) {
@@ -173,3 +187,23 @@ async function scrapeSchedule() {
 }
 
 export default scrapeSchedule;
+
+if (typeof process !== 'undefined') {
+    try {
+        const { fileURLToPath } = await import('url');
+        const __filename = fileURLToPath(import.meta.url);
+
+        if (process.argv[1] === __filename) {
+            (async () => {
+                try {
+                    const result = await scrapeSchedule();
+                    console.log(JSON.stringify(result, null, 2));
+                } catch (err) {
+                    console.error('Scraper failed:', err);
+                    process.exit(1);
+                }
+            })();
+        }
+    } catch (e) {
+    }
+}

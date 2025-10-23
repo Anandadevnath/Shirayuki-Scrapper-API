@@ -429,3 +429,21 @@ export async function closeSharedBrowser() {
         browserLaunchPromise = null;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+node -e "import scrapeSchedule from './scrapeanime/Schedule/schedule.js'; scrapeSchedule().then(r => console.log(JSON.stringify(r, null, 2))).catch(e => console.error(e));"

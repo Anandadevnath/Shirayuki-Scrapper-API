@@ -32,40 +32,58 @@ router.get('/', async (req, res) => {
         }).sort({ last_updated: -1 });
 
         if (existingSchedule) {
-            console.log(`📋 Returning cached schedule data for ${currentWeekId}`);
-            const cleanData = existingSchedule.schedule_data.map(item => ({
-                day: item.day,
-                anime: item.anime,
-                time: item.time
-            }));
+            const isErrorCache = Array.isArray(existingSchedule.schedule_data) &&
+                existingSchedule.schedule_data.length === 1 &&
+                existingSchedule.schedule_data[0] &&
+                existingSchedule.schedule_data[0].day === 'Error';
 
-            return res.json({
-                success: true,
-                data: cleanData,
-                extraction_time_seconds: 0.001,
-                cached: true,
-                week_id: currentWeekId,
-                last_updated: existingSchedule.last_updated,
-                total_episodes: existingSchedule.total_episodes
-            });
+            if (!isErrorCache) {
+                console.log(`📋 Returning cached schedule data for ${currentWeekId}`);
+                const cleanData = existingSchedule.schedule_data.map(item => ({
+                    day: item.day,
+                    anime: item.anime,
+                    time: item.time
+                }));
+
+                return res.json({
+                    success: true,
+                    data: cleanData,
+                    extraction_time_seconds: 0.001,
+                    cached: true,
+                    week_id: currentWeekId,
+                    last_updated: existingSchedule.last_updated,
+                    total_episodes: existingSchedule.total_episodes
+                });
+            }
+            console.log(`⚠️ Ignoring cached error schedule for ${currentWeekId} and scraping fresh`);
         }
 
         console.log(`🔄 Scraping fresh schedule data for ${currentWeekId}`);
         const scheduleData = await scrapeSchedule();
         const duration = (Date.now() - start) / 1000;
+        
+        const isScrapeError = Array.isArray(scheduleData) &&
+            scheduleData.length === 1 &&
+            scheduleData[0] &&
+            scheduleData[0].day === 'Error';
 
-        const savedSchedule = await Schedule.findOneAndUpdate(
-            { week_id: currentWeekId },
-            {
-                schedule_data: scheduleData,
-                extraction_time_seconds: duration,
-                total_episodes: scheduleData.length,
-                last_updated: new Date()
-            },
-            { upsert: true, new: true }
-        );
+        let savedSchedule = null;
+        if (!isScrapeError) {
+            savedSchedule = await Schedule.findOneAndUpdate(
+                { week_id: currentWeekId },
+                {
+                    schedule_data: scheduleData,
+                    extraction_time_seconds: duration,
+                    total_episodes: scheduleData.length,
+                    last_updated: new Date()
+                },
+                { upsert: true, new: true }
+            );
 
-        console.log(`💾 Saved schedule data to MongoDB: ${scheduleData.length} episodes`);
+            console.log(`💾 Saved schedule data to MongoDB: ${scheduleData.length} episodes`);
+        } else {
+            console.log('⚠️ Scraper returned an error payload; not saving to DB');
+        }
 
         const fourWeeksAgo = new Date();
         fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
@@ -85,7 +103,7 @@ router.get('/', async (req, res) => {
             cached: false,
             week_id: currentWeekId,
             total_episodes: scheduleData.length,
-            saved_to_db: true
+            saved_to_db: !isScrapeError
         });
 
     } catch (err) {
