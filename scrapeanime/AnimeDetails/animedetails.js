@@ -1,54 +1,7 @@
 import express from 'express';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-puppeteer.use(StealthPlugin());
 import { toKatakana } from '@koozaki/romaji-conv';
-
-// shared browser singleton + launch promise to prevent concurrent launches
-let browserSingleton = null;
-let browserLaunchPromise = null;
-
-async function getBrowser() {
-  if (browserSingleton) return browserSingleton;
-  if (!browserLaunchPromise) {
-    browserLaunchPromise = (async () => {
-      try {
-        const { executablePath } = await import('puppeteer');
-        const b = await puppeteer.launch({
-          headless: 'new',
-          executablePath: executablePath(),
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--no-first-run',
-            '--window-size=1280,720',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-infobars',
-            '--disable-background-timer-throttling',
-            '--disable-renderer-backgrounding',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-features=TranslateUI',
-            '--disable-extensions'
-          ]
-        });
-        try {
-          if (typeof process !== 'undefined' && process && process.on) {
-            process.once('exit', () => { try { b.close(); } catch (e) { } });
-          }
-        } catch (e) { }
-        browserSingleton = b;
-        return browserSingleton;
-      } catch (e) {
-        browserLaunchPromise = null;
-        throw e;
-      }
-    })();
-  }
-  return browserLaunchPromise;
-}
 
 const router = express.Router();
 
@@ -56,90 +9,10 @@ function japanese_lang(engTitle) {
   return toKatakana(engTitle);
 }
 
-const epCache = new Map();
-function getCachedEp(url) {
-  const e = epCache.get(url);
-  if (!e) return null;
-  if (Date.now() > e.expiresAt) { epCache.delete(url); return null; }
-  return e.count;
-}
-function setCachedEp(url, count, ttlMs = 60 * 60 * 1000) {
-  epCache.set(url, { count, expiresAt: Date.now() + ttlMs });
-}
-
-export async function warmBrowser() {
-  try {
-    // best-effort: start the shared browser in background to reduce cold start
-    await getBrowser();
-  } catch (e) {
-    // ignore failures here - fallback paths use axios/cheerio
-  }
-}
-
-async function fetchEpisodeCount(pageUrl) {
-  const cached = getCachedEp(pageUrl);
-  if (cached !== null) return cached;
-
-  // Fast path: try a plain HTTP fetch + cheerio first (much cheaper than launching puppeteer)
-  try {
-    const { data: html } = await axios.get(pageUrl, { timeout: 5000 });
-    const $ = cheerio.load(html);
-    const txt = $('li#end a').first().text().trim();
-    if (txt) {
-      const n = parseInt(txt.replace(/\D/g, ''), 10);
-      if (!isNaN(n)) { setCachedEp(pageUrl, n); return n; }
-    }
-  } catch (e) {
-    // continue to puppeteer fallback
-  }
-
-  // Fallback: use puppeteer only if the static fetch didn't yield a result
-  try {
-    const browser = await getBrowser();
-    const page = await browser.newPage();
-    try {
-      await page.setRequestInterception(true);
-      page.on('request', req => {
-        const rtype = req.resourceType();
-        if (['image', 'stylesheet', 'font', 'media'].includes(rtype)) return req.abort();
-        const url = req.url();
-        if (/doubleclick|google-analytics|analytics|adservice|ads|tracker/.test(url)) return req.abort();
-        try { req.continue(); } catch (e) { }
-      });
-
-      await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
-      try {
-        await page.waitForSelector('li#end a', { timeout: 3000 });
-      } catch (e) {
-      }
-      const txt = await page.evaluate(() => {
-        const el = document.querySelector('li#end a');
-        return el ? el.textContent.trim() : null;
-      });
-      if (txt) {
-        const n = parseInt(txt.replace(/\D/g, ''), 10);
-        if (!isNaN(n)) { setCachedEp(pageUrl, n); return n; }
-      }
-    } finally {
-      try { await page.close(); } catch (e) { }
-    }
-  } catch (e) {
-    // puppeteer failed - fall through to null
-  }
-
-  return null;
-}
-
 router.get('/anime/:slug', async (req, res) => {
   const { slug } = req.params;
   const animeUrl = `https://123animehub.cc/anime/${slug}`;
   const startTime = Date.now();
-  let baseSlugForEp = slug;
-  if (baseSlugForEp && baseSlugForEp.toLowerCase().endsWith('-dub')) baseSlugForEp = baseSlugForEp.slice(0, -4);
-  const subEpisodeUrlEarly = `https://123animehub.cc/anime/${baseSlugForEp}/episode/1`;
-  const dubEpisodeUrlEarly = `https://123animehub.cc/anime/${baseSlugForEp}-dub/episode/1`;
-  const subPromise = fetchEpisodeCount(subEpisodeUrlEarly).catch(() => null);
-  const dubPromise = fetchEpisodeCount(dubEpisodeUrlEarly).catch(() => null);
   try {
     const { data: html } = await axios.get(animeUrl);
     const $ = cheerio.load(html);
@@ -204,14 +77,8 @@ router.get('/anime/:slug', async (req, res) => {
       rating = null;
     }
 
-    let sub = null;
-    let dub = null;
-    try {
-      const [s, d] = await Promise.all([subPromise, dubPromise]);
-      sub = s;
-      dub = d;
-    } catch (e) {
-    }
+    // episode counts (sub / dub) are intentionally handled in the single-episode
+    // scraper to avoid launching puppeteer or doing extra requests here.
 
     const execution_time_ms = Date.now() - startTime;
     const execution_time_sec = (execution_time_ms / 1000).toFixed(3);
@@ -220,8 +87,6 @@ router.get('/anime/:slug', async (req, res) => {
       title, image, description, type, country, genres, status, released, quality,
       rating,
       japanese_lang: japanese_lang(title),
-      sub,
-      dub,
       execution_time_sec
     });
   } catch (error) {

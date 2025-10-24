@@ -6,7 +6,7 @@ import top10Router from './routes/top10.js';
 import monthlyRouter from './routes/monthly.js';
 import weeklyRouter from './routes/weekly.js';
 import animeListRouter from './routes/anime-list.js';
-import animedetailsRouter, { warmBrowser } from './scrapeanime/AnimeDetails/animedetails.js';
+import animedetailsRouter from './scrapeanime/AnimeDetails/animedetails.js';
 import scheduleRouter from './routes/schedule.js';
 import dbScheduleRouter from './routes/db-schedule.js';
 import genreRouter from './routes/genre.js';
@@ -75,12 +75,8 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
     console.log(`🚀 Anime Scraper API v2.1 running at http://localhost:${PORT}`);
-    // warm homepage cache to reduce first-request latency (non-blocking)
     try {
         warmHomepageCache();
-        // warm puppeteer browser (non-blocking)
-        try { warmBrowser(); } catch (e) {}
     } catch (e) {
-        // ignore warm errors on startup
     }
 });
