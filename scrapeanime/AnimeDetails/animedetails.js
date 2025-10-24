@@ -26,13 +26,18 @@ function setCachedEp(url, count, ttlMs = 60 * 60 * 1000) {
 export async function warmBrowser() {
   try {
     if (!global.__puppeteer_browser) {
-      global.__puppeteer_browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      global.__puppeteer_browser = await puppeteer.launch({
+        headless: true, args:
+          [
+            '--no-sandbox',
+            '--disable-setuid-sandbox'
+          ]
+      });
       process.once('exit', async () => {
         try { await global.__puppeteer_browser.close(); } catch (e) { }
       });
     }
   } catch (e) {
-    // ignore warm errors
   }
 }
 
@@ -98,6 +103,12 @@ router.get('/anime/:slug', async (req, res) => {
   const { slug } = req.params;
   const animeUrl = `https://123animehub.cc/anime/${slug}`;
   const startTime = Date.now();
+  let baseSlugForEp = slug;
+  if (baseSlugForEp && baseSlugForEp.toLowerCase().endsWith('-dub')) baseSlugForEp = baseSlugForEp.slice(0, -4);
+  const subEpisodeUrlEarly = `https://123animehub.cc/anime/${baseSlugForEp}/episode/1`;
+  const dubEpisodeUrlEarly = `https://123animehub.cc/anime/${baseSlugForEp}-dub/episode/1`;
+  const subPromise = fetchEpisodeCount(subEpisodeUrlEarly).catch(() => null);
+  const dubPromise = fetchEpisodeCount(dubEpisodeUrlEarly).catch(() => null);
   try {
     const { data: html } = await axios.get(animeUrl);
     const $ = cheerio.load(html);
@@ -155,7 +166,7 @@ router.get('/anime/:slug', async (req, res) => {
                 votes: byId.data.rating.voteCount || null
               };
             }
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     } catch (e) {
@@ -165,14 +176,7 @@ router.get('/anime/:slug', async (req, res) => {
     let sub = null;
     let dub = null;
     try {
-      let baseSlug = slug;
-      if (baseSlug && baseSlug.toLowerCase().endsWith('-dub')) baseSlug = baseSlug.slice(0, -4);
-      const subUrl = `https://123animehub.cc/anime/${baseSlug}/episode/1`;
-      const dubUrl = `https://123animehub.cc/anime/${baseSlug}-dub/episode/1`;
-      const [s, d] = await Promise.all([
-        fetchEpisodeCount(subUrl),
-        fetchEpisodeCount(dubUrl)
-      ]);
+      const [s, d] = await Promise.all([subPromise, dubPromise]);
       sub = s;
       dub = d;
     } catch (e) {
