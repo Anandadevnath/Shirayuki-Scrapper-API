@@ -6,6 +6,50 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 puppeteer.use(StealthPlugin());
 import { toKatakana } from '@koozaki/romaji-conv';
 
+// shared browser singleton + launch promise to prevent concurrent launches
+let browserSingleton = null;
+let browserLaunchPromise = null;
+
+async function getBrowser() {
+  if (browserSingleton) return browserSingleton;
+  if (!browserLaunchPromise) {
+    browserLaunchPromise = (async () => {
+      try {
+        const { executablePath } = await import('puppeteer');
+        const b = await puppeteer.launch({
+          headless: 'new',
+          executablePath: executablePath(),
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--no-first-run',
+            '--window-size=1280,720',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-infobars',
+            '--disable-background-timer-throttling',
+            '--disable-renderer-backgrounding',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-features=TranslateUI',
+            '--disable-extensions'
+          ]
+        });
+        try {
+          if (typeof process !== 'undefined' && process && process.on) {
+            process.once('exit', () => { try { b.close(); } catch (e) { } });
+          }
+        } catch (e) { }
+        browserSingleton = b;
+        return browserSingleton;
+      } catch (e) {
+        browserLaunchPromise = null;
+        throw e;
+      }
+    })();
+  }
+  return browserLaunchPromise;
+}
+
 const router = express.Router();
 
 function japanese_lang(engTitle) {
@@ -25,19 +69,10 @@ function setCachedEp(url, count, ttlMs = 60 * 60 * 1000) {
 
 export async function warmBrowser() {
   try {
-    if (!global.__puppeteer_browser) {
-      global.__puppeteer_browser = await puppeteer.launch({
-        headless: true, args:
-          [
-            '--no-sandbox',
-            '--disable-setuid-sandbox'
-          ]
-      });
-      process.once('exit', async () => {
-        try { await global.__puppeteer_browser.close(); } catch (e) { }
-      });
-    }
+    // best-effort: start the shared browser in background to reduce cold start
+    await getBrowser();
   } catch (e) {
+    // ignore failures here - fallback paths use axios/cheerio
   }
 }
 
@@ -45,16 +80,22 @@ async function fetchEpisodeCount(pageUrl) {
   const cached = getCachedEp(pageUrl);
   if (cached !== null) return cached;
 
+  // Fast path: try a plain HTTP fetch + cheerio first (much cheaper than launching puppeteer)
   try {
-    if (!global.__puppeteer_browser) {
-      global.__puppeteer_browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-      process.once('exit', async () => {
-        try {
-          await global.__puppeteer_browser.close();
-        } catch (e) { }
-      });
+    const { data: html } = await axios.get(pageUrl, { timeout: 5000 });
+    const $ = cheerio.load(html);
+    const txt = $('li#end a').first().text().trim();
+    if (txt) {
+      const n = parseInt(txt.replace(/\D/g, ''), 10);
+      if (!isNaN(n)) { setCachedEp(pageUrl, n); return n; }
     }
-    const browser = global.__puppeteer_browser;
+  } catch (e) {
+    // continue to puppeteer fallback
+  }
+
+  // Fallback: use puppeteer only if the static fetch didn't yield a result
+  try {
+    const browser = await getBrowser();
     const page = await browser.newPage();
     try {
       await page.setRequestInterception(true);
@@ -63,12 +104,12 @@ async function fetchEpisodeCount(pageUrl) {
         if (['image', 'stylesheet', 'font', 'media'].includes(rtype)) return req.abort();
         const url = req.url();
         if (/doubleclick|google-analytics|analytics|adservice|ads|tracker/.test(url)) return req.abort();
-        req.continue();
+        try { req.continue(); } catch (e) { }
       });
 
-      await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
       try {
-        await page.waitForSelector('li#end a', { timeout: 4000 });
+        await page.waitForSelector('li#end a', { timeout: 3000 });
       } catch (e) {
       }
       const txt = await page.evaluate(() => {
@@ -83,17 +124,7 @@ async function fetchEpisodeCount(pageUrl) {
       try { await page.close(); } catch (e) { }
     }
   } catch (e) {
-  }
-
-  try {
-    const { data: html } = await axios.get(pageUrl, { timeout: 7000 });
-    const $ = cheerio.load(html);
-    const txt = $('li#end a').first().text().trim();
-    if (txt) {
-      const n = parseInt(txt.replace(/\D/g, ''), 10);
-      if (!isNaN(n)) { setCachedEp(pageUrl, n); return n; }
-    }
-  } catch (e) {
+    // puppeteer failed - fall through to null
   }
 
   return null;
