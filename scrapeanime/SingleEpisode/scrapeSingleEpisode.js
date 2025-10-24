@@ -1,74 +1,11 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import axios from 'axios';
-import * as cheerio from 'cheerio';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 puppeteer.use(StealthPlugin());
 
 const scrapeCache = new Map();
 const CACHE_TTL_MS = 1000 * 60 * 5;
-
-const epCache = new Map();
-const EP_CACHE_TTL_MS = 1000 * 60 * 60; 
-
-function getCachedEp(url) {
-    const e = epCache.get(url);
-    if (!e) return null;
-    if (Date.now() > e.expiresAt) { epCache.delete(url); return null; }
-    return e.count;
-}
-function setCachedEp(url, count, ttlMs = EP_CACHE_TTL_MS) {
-    try { epCache.set(url, { count, expiresAt: Date.now() + ttlMs }); } catch (e) { }
-}
-
-async function fetchEpisodeCount(pageUrl) {
-    const cached = getCachedEp(pageUrl);
-    if (cached !== null) return cached;
-
-    try {
-        const { data: html } = await axios.get(pageUrl, { timeout: 5000 });
-        const $ = cheerio.load(html);
-        const txt = $('li#end a').first().text().trim();
-        if (txt) {
-            const n = parseInt(txt.replace(/\D/g, ''), 10);
-            if (!isNaN(n)) { setCachedEp(pageUrl, n); return n; }
-        }
-    } catch (e) {
-    }
-
-    try {
-        const browser = await getBrowser();
-        const page = await browser.newPage();
-        try {
-            await page.setRequestInterception(true);
-            page.on('request', req => {
-                const rtype = req.resourceType();
-                if (['image', 'stylesheet', 'font', 'media'].includes(rtype)) return req.abort();
-                const url = req.url();
-                if (/doubleclick|google-analytics|analytics|adservice|ads|tracker/.test(url)) return req.abort();
-                try { req.continue(); } catch (e) { }
-            });
-
-            await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
-            try { await page.waitForSelector('li#end a', { timeout: 3000 }); } catch (e) { }
-            const txt = await page.evaluate(() => {
-                const el = document.querySelector('li#end a');
-                return el ? el.textContent.trim() : null;
-            });
-            if (txt) {
-                const n = parseInt(txt.replace(/\D/g, ''), 10);
-                if (!isNaN(n)) { setCachedEp(pageUrl, n); return n; }
-            }
-        } finally {
-            try { await page.close(); } catch (e) { }
-        }
-    } catch (e) {
-        // ignore
-    }
-
-    return null;
-}
 
 let browserSingleton = null;
 let browserLaunchPromise = null;
@@ -313,15 +250,6 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
                     .replace(/-/g, ' ')
                     .replace(/\b\w/g, l => l.toUpperCase());
             }
-
-            // start fetching episode counts early so it overlaps with other work
-            let baseSlugForEp = animeId;
-            if (baseSlugForEp && baseSlugForEp.toLowerCase().endsWith('-dub')) baseSlugForEp = baseSlugForEp.slice(0, -4);
-            const subUrl = `https://123animehub.cc/anime/${baseSlugForEp}/episode/1`;
-            const dubUrl = `https://123animehub.cc/anime/${baseSlugForEp}-dub/episode/1`;
-            const subPromise = fetchEpisodeCount(subUrl).catch(() => null);
-            const dubPromise = fetchEpisodeCount(dubUrl).catch(() => null);
-
             const streamingData = {
                 title: animeTitle,
                 episode_number: episodeNumber,
@@ -336,11 +264,6 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
             };
 
             try {
-                // await the episode-count promises so we can include them in the response
-                const [subCount, dubCount] = await Promise.all([subPromise, dubPromise]);
-                streamingData.sub = subCount;
-                streamingData.dub = dubCount;
-
                 scrapeCache.set(episodeUrl, {
                     expiresAt: Date.now() + CACHE_TTL_MS,
                     result: result

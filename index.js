@@ -7,6 +7,7 @@ import monthlyRouter from './routes/monthly.js';
 import weeklyRouter from './routes/weekly.js';
 import animeListRouter from './routes/anime-list.js';
 import animedetailsRouter from './scrapeanime/AnimeDetails/animedetails.js';
+import totalEpisodeRouter from './routes/totalepisode.js';
 import scheduleRouter from './routes/schedule.js';
 import dbScheduleRouter from './routes/db-schedule.js';
 import genreRouter from './routes/genre.js';
@@ -50,7 +51,8 @@ app.get('/', (req, res) => {
             { name: "Streaming url", path: "/episode-stream?id=one-piece-dub&ep=1" },
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
             { name: "Anime Schedule", path: "/schedule" },
-            { name: "Schedule from DB", path: "/db-schedule" }
+            { name: "Schedule from DB", path: "/db-schedule" },
+            { name: "All the episodes Sub and Dub counts - testing", path: "/totalepisode?id=one-piece-dub" },
         ]
     });
 });
@@ -70,6 +72,7 @@ app.use('/onging', ongingRouter);
 app.use('/ongoing', ongingRouter);
 app.use('/recent_updates', recentUpdatesRouter);
 app.use('/recent_updates_dub', recentUpdatesDubRouter);
+app.use('/totalepisode', totalEpisodeRouter);
 
 const PORT = process.env.PORT || 5000;
 
