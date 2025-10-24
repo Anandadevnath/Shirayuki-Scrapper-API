@@ -100,8 +100,8 @@ router.get('/', async (req, res) => {
             try { req.continue(); } catch (e) { }
           });
 
-          await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
-          try { await page.waitForSelector('li#end a', { timeout: 3000 }); } catch (e) { }
+          await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
+          try { await page.waitForSelector('li#end a', { timeout: 8000 }); } catch (e) { }
           const txt = await page.evaluate(() => {
             const el = document.querySelector('li#end a');
             return el ? el.textContent.trim() : null;

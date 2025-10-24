@@ -16,12 +16,16 @@ async function getBrowser() {
         browserLaunchPromise = (async () => {
             const { executablePath } = await import('puppeteer');
             const b = await puppeteer.launch({
-                headless: 'new',
+                // use portable headless mode; 'new' can cause issues on some hosts
+                headless: true,
                 executablePath: executablePath(),
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--no-zygote',
+                    '--single-process',
                     '--no-first-run',
                     '--window-size=1280,720',
                     '--disable-blink-features=AutomationControlled',
@@ -59,8 +63,24 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
     const browser = await getBrowser();
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    page.setDefaultNavigationTimeout(6000);
-    page.setDefaultTimeout(6000);
+    // increase timeouts slightly and allow a retry on navigation failures
+    page.setDefaultNavigationTimeout(15000);
+    page.setDefaultTimeout(15000);
+
+    async function safeGoto(url, options = {}) {
+        const maxAttempts = 2;
+        let attempt = 0;
+        while (attempt < maxAttempts) {
+            try {
+                attempt++;
+                return await page.goto(url, options);
+            } catch (e) {
+                if (attempt >= maxAttempts) throw e;
+                // small backoff before retrying
+                await new Promise(r => setTimeout(r, 500));
+            }
+        }
+    }
 
     try {
         try {
@@ -83,7 +103,8 @@ export const scrapeSingleEpisode = async (episodeUrl) => {
 
         const scrapingStartTime = Date.now();
 
-        await page.goto(episodeUrl, { waitUntil: 'domcontentloaded', timeout: 6000 });
+    // navigate with a safe retry wrapper to reduce transient navigation timeouts
+    await safeGoto(episodeUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
 
         let streamingLink = null;
         let attempts = 0;
