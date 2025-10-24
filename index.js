@@ -7,7 +7,6 @@ import monthlyRouter from './routes/monthly.js';
 import weeklyRouter from './routes/weekly.js';
 import animeListRouter from './routes/anime-list.js';
 import animedetailsRouter from './scrapeanime/AnimeDetails/animedetails.js';
-import totalEpisodeRouter from './routes/totalepisode.js';
 import scheduleRouter from './routes/schedule.js';
 import dbScheduleRouter from './routes/db-schedule.js';
 import genreRouter from './routes/genre.js';
@@ -15,7 +14,6 @@ import searchRouter from './routes/search.js';
 import ongingRouter from './routes/onging.js';
 import recentUpdatesRouter from './routes/recent_updates.js';
 import recentUpdatesDubRouter from './routes/recent_updates_dub.js';
-import { warmHomepageCache } from './scrapeanime/homepage/scrapeservice.js';
 
 dotenv.config();
 const app = express();
@@ -52,7 +50,6 @@ app.get('/', (req, res) => {
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "Schedule from DB", path: "/db-schedule" },
-            { name: "All the episodes Sub and Dub counts - testing", path: "/totalepisode?id=one-piece-dub" },
         ]
     });
 });
@@ -72,14 +69,9 @@ app.use('/onging', ongingRouter);
 app.use('/ongoing', ongingRouter);
 app.use('/recent_updates', recentUpdatesRouter);
 app.use('/recent_updates_dub', recentUpdatesDubRouter);
-app.use('/totalepisode', totalEpisodeRouter);
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
     console.log(`🚀 Anime Scraper API v2.1 running at http://localhost:${PORT}`);
-    try {
-        warmHomepageCache();
-    } catch (e) {
-    }
 });
