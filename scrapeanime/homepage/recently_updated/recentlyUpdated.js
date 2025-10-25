@@ -155,7 +155,7 @@ export default async function scrapeRecentlyUpdated($, resolveUrl, source) {
   const CONCURRENCY = 6;
   const enriched = await mapWithConcurrency(dedup, async (it) => {
     const rating = await fetchImdbRating(it.title || '');
-    return { title: it.title, href: it.href, image: it.image, episode: it.episode, source: it.source, section: it.section, type: it.type, rating };
+    return { title: it.title, href: it.href, image: it.image, Sub: it.episode, source: it.source, section: it.section, type: it.type, rating };
   }, CONCURRENCY);
 
   return enriched;

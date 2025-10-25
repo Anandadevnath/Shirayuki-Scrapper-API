@@ -149,7 +149,7 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
   const enriched = await mapWithConcurrency(dedup, async (it) => {
     const rating = await fetchImdbRating(it.title || '');
     const image = it.image || null;
-    return { title: it.title, href: it.href, image: image, episode: it.episode, source: it.source, section: it.section, type: it.type, rating };
+    return { title: it.title, href: it.href, image: image, Dub: it.episode, source: it.source, section: it.section, type: it.type, rating };
   }, CONCURRENCY);
 
   return enriched;

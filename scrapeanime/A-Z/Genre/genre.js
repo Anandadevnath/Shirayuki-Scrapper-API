@@ -24,9 +24,11 @@ export async function scrapeAnimeByGenre(genre, page = 1) {
 			image = '';
 		}
 		
-		const sub = $(el).find('.status .sub').length > 0;
-		const dub = $(el).find('.status .dub').length > 0;
 		const episodes = $(el).find('.ep').text().replace('Ep ', '').trim();
+		const isDubTitle = /\bDub$/i.test(title.trim());
+
+		const sub = isDubTitle ? false : episodes || false;
+		const dub = isDubTitle ? episodes || false : false;
 
 		animeList.push({
 			index: i + 1,
