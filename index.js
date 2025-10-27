@@ -13,7 +13,6 @@ import genreRouter from './routes/genre.js';
 import searchRouter from './routes/search.js';
 import ongingRouter from './routes/onging.js';
 import recentUpdatesRouter from './routes/recent_updates.js';
-import recentUpdatesDubRouter from './routes/recent_updates_dub.js';
 
 dotenv.config();
 const app = express();
@@ -36,7 +35,6 @@ app.get('/', (req, res) => {
                     "/home",
                     "/onging",
                     "/recent_updates",
-                    "/recent_updates_dub",
                 ]
             },
             { name: "Top 10 animes", path: "/top10" },
@@ -68,7 +66,6 @@ app.use('/db-schedule', dbScheduleRouter);
 app.use('/onging', ongingRouter);
 app.use('/ongoing', ongingRouter);
 app.use('/recent_updates', recentUpdatesRouter);
-app.use('/recent_updates_dub', recentUpdatesDubRouter);
 
 const PORT = process.env.PORT || 5000;
 
