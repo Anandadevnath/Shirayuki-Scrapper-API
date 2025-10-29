@@ -77,7 +77,15 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
       }
 
       if (href || titleText) {
-        items.push({ title: titleText || null, href: href || null, image: img || null, episode: episode, source, section: 'recently_updated', type: 'dub' });
+        items.push({
+          title: titleText || null,
+          href: href || null,
+          image: img || null,
+          episode: episode,
+          source,
+          section: 'recently_updated',
+          type: 'dub'
+        });
       }
     });
   });
@@ -123,8 +131,7 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
               imdbCache.set(key, byId.data.rating.aggregateRating);
               return byId.data.rating.aggregateRating;
             }
-          } catch (e) {
-          }
+          } catch (e) { }
         }
       }
 
@@ -146,10 +153,47 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
   }).slice(0, 60);
 
   const CONCURRENCY = 6;
+
+  async function fetchEnglishTitle(title, type) {
+    if (!title) return null;
+    const searchTitle = title.replace(/\bDub\b/i, '').trim();
+    try {
+      const resp = await axios.get('https://kitsu.io/api/edge/anime', {
+        params: { 'filter[text]': searchTitle, 'page[limit]': 5 },
+        timeout: 4000
+      });
+      const data = resp.data && resp.data.data ? resp.data.data : [];
+      if (data.length) {
+        // Best match by normalized canonical title
+        let best = data.find(r => normalizeForCompare(r.attributes.canonicalTitle) === normalizeForCompare(searchTitle));
+        if (!best) best = data[0];
+        const titles = best.attributes.titles || {};
+        const english = titles.en || titles.en_jp || best.attributes.canonicalTitle;
+        if (english) {
+          return type === 'dub' ? english + ' (Dub)' : english;
+        }
+      }
+    } catch (e) {
+      // ignore error
+    }
+    return null;
+  }
+
   const enriched = await mapWithConcurrency(dedup, async (it) => {
     const rating = await fetchImdbRating(it.title || '');
+    const englishTitle = await fetchEnglishTitle(it.title || '', it.type);
     const image = it.image || null;
-    return { title: it.title, href: it.href, image: image, Dub: it.episode, source: it.source, section: it.section, type: it.type, rating };
+    return {
+      title: it.title,
+      englishTitle,
+      href: it.href,
+      image: image,
+      Dub: it.episode,
+      source: it.source,
+      section: it.section,
+      type: it.type,
+      rating
+    };
   }, CONCURRENCY);
 
   return enriched;

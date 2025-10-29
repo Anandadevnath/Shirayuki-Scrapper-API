@@ -153,9 +153,43 @@ export default async function scrapeRecentlyUpdated($, resolveUrl, source) {
   }).slice(0, 60);
 
   const CONCURRENCY = 6;
+  async function fetchEnglishTitle(title, type) {
+    if (!title) return null;
+    const searchTitle = title.replace(/\bDub\b/i, '').trim();
+    try {
+      const resp = await axios.get('https://kitsu.io/api/edge/anime', {
+        params: { 'filter[text]': searchTitle, 'page[limit]': 5 },
+        timeout: 4000
+      });
+      const data = resp.data && resp.data.data ? resp.data.data : [];
+      if (data.length) {
+        let best = data.find(r => normalizeForCompare(r.attributes.canonicalTitle) === normalizeForCompare(searchTitle));
+        if (!best) best = data[0];
+        const titles = best.attributes.titles || {};
+        const english = titles.en || titles.en_jp || best.attributes.canonicalTitle;
+        if (english) {
+          return type === 'dub' ? english + ' (Dub)' : english;
+        }
+      }
+    } catch (e) {
+    }
+    return null;
+  }
+
   const enriched = await mapWithConcurrency(dedup, async (it) => {
     const rating = await fetchImdbRating(it.title || '');
-    return { title: it.title, href: it.href, image: it.image, Sub: it.episode, source: it.source, section: it.section, type: it.type, rating };
+    const englishTitle = await fetchEnglishTitle(it.title || '', it.type);
+    return {
+      title: it.title,
+      englishTitle,
+      href: it.href,
+      image: it.image,
+      Sub: it.episode,
+      source: it.source,
+      section: it.section,
+      type: it.type,
+      rating,
+    };
   }, CONCURRENCY);
 
   return enriched;
