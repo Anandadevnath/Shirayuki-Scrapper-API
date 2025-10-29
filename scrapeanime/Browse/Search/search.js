@@ -28,9 +28,14 @@ export async function scrapeAnimeSearch(query) {
                     const $el = $(el);
 
                     // Extract title
-                    const title = $el.find('.name a, .film-name a, .dynamic-name, .title a, h3 a').first().text().trim() ||
-                        $el.find('a[data-jtitle]').attr('data-jtitle') ||
-                        $el.find('img').attr('alt') || '';
+                        let title = $el.find('.name a, .film-name a, .dynamic-name, .title a, h3 a').first().text().trim() ||
+                            $el.find('a[data-jtitle]').attr('data-jtitle') ||
+                            $el.find('img').attr('alt') || '';
+
+                        // Move 'Dub' to the end if present in title
+                        if (/\(Dub\)/i.test(title)) {
+                            title = title.replace(/\s*\(Dub\)/i, '').trim() + ' (Dub)';
+                        }
 
                     // Extract image 
                     const imgElement = $el.find('.film-poster img, .poster img, img').first();
@@ -92,13 +97,32 @@ export async function scrapeAnimeSearch(query) {
                         $el.find('[class*="dub"]').length > 0;
 
                     if (title && title.length > 0) {
-                        results.push({
-                            title,
-                            sub: hasSub,
-                            dub: hasDub,
-                            image,
-                            episodes: episode || null
-                        });
+                            // Extract japanese_title from image URL
+                            let japanese_title = '';
+                            if (image) {
+                                try {
+                                    const urlParts = image.split('/');
+                                    let fileName = urlParts[urlParts.length - 1];
+                                    const isDub = /-dub\.(jpg|jpeg|png|webp)$/i.test(fileName);
+                                    fileName = fileName.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+                                    fileName = fileName.replace(/-(dub|sub)$/i, '');
+                                    japanese_title = fileName.replace(/-/g, ' ')
+                                        .replace(/\b\w/g, c => c.toUpperCase());
+                                    if (isDub) {
+                                        japanese_title = japanese_title + ' Dub';
+                                    }
+                                } catch (e) {
+                                    japanese_title = '';
+                                }
+                            }
+                            results.push({
+                                title,
+                                japanese_title,
+                                sub: hasSub,
+                                dub: hasDub,
+                                image,
+                                episodes: episode || null
+                            });
                     }
                 });
 
