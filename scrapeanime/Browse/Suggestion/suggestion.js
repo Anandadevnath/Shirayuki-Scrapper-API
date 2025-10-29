@@ -35,10 +35,28 @@ export async function scrapeSearchSuggestions(query) {
         const isDubbed = $(el).find('.dub').length > 0;
         const type = isDubbed ? 'dub' : (isSubbed ? 'sub' : 'sub');
 
+        let japanese_title = '';
+        if (image) {
+            try {
+                const urlParts = image.split('/');
+                let fileName = urlParts[urlParts.length - 1];
+                const isDub = /-dub\.(jpg|jpeg|png|webp)$/i.test(fileName);
+                fileName = fileName.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+                fileName = fileName.replace(/-(dub|sub)$/i, '');
+                japanese_title = fileName.replace(/-/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+                if (isDub) {
+                    japanese_title = japanese_title + ' Dub';
+                }
+            } catch (e) {
+                japanese_title = '';
+            }
+        }
         if (title) {
             suggestions.push({
                 index: i + 1,
                 title,
+                japanese_title,
                 image,
                 episode,
                 type
