@@ -13,6 +13,7 @@ import genreRouter from './routes/genre.js';
 import searchRouter from './routes/search.js';
 import ongingRouter from './routes/onging.js';
 import recentUpdatesRouter from './routes/recent_updates.js';
+import underratedRouter from './routes/underrated.js';
 
 dotenv.config();
 const app = express();
@@ -66,6 +67,7 @@ app.use('/db-schedule', dbScheduleRouter);
 app.use('/onging', ongingRouter);
 app.use('/ongoing', ongingRouter);
 app.use('/recent_updates', recentUpdatesRouter);
+app.use('/underrated', underratedRouter);
 
 const PORT = process.env.PORT || 5000;
 
