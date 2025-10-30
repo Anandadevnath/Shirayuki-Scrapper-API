@@ -32,12 +32,11 @@ router.get('/', async (req, res) => {
         }).sort({ last_updated: -1 });
 
         if (existingSchedule) {
-            const isErrorCache = Array.isArray(existingSchedule.schedule_data) &&
-                existingSchedule.schedule_data.length === 1 &&
-                existingSchedule.schedule_data[0] &&
-                existingSchedule.schedule_data[0].day === 'Error';
+            const isEmptyOrErrorCache = !Array.isArray(existingSchedule.schedule_data) ||
+                existingSchedule.schedule_data.length === 0 ||
+                (existingSchedule.schedule_data.length === 1 && existingSchedule.schedule_data[0] && existingSchedule.schedule_data[0].day === 'Error');
 
-            if (!isErrorCache) {
+            if (!isEmptyOrErrorCache) {
                 console.log(`📋 Returning cached schedule data for ${currentWeekId}`);
                 const cleanData = existingSchedule.schedule_data.map(item => ({
                     day: item.day,
@@ -55,17 +54,16 @@ router.get('/', async (req, res) => {
                     total_episodes: existingSchedule.total_episodes
                 });
             }
-            console.log(`⚠️ Ignoring cached error schedule for ${currentWeekId} and scraping fresh`);
+            console.log(`⚠️ Ignoring cached empty/error schedule for ${currentWeekId} and scraping fresh`);
         }
 
         console.log(`🔄 Scraping fresh schedule data for ${currentWeekId}`);
         const scheduleData = await scrapeSchedule();
         const duration = (Date.now() - start) / 1000;
         
-        const isScrapeError = Array.isArray(scheduleData) &&
-            scheduleData.length === 1 &&
-            scheduleData[0] &&
-            scheduleData[0].day === 'Error';
+        const isScrapeError = !Array.isArray(scheduleData) ||
+            scheduleData.length === 0 ||
+            (scheduleData.length === 1 && scheduleData[0] && scheduleData[0].day === 'Error');
 
         let savedSchedule = null;
         if (!isScrapeError) {
