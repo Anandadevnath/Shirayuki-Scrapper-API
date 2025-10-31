@@ -1,4 +1,3 @@
-// Simple in-memory namespaced TTL cache
 const namespaces = new Map();
 
 function createNamespace(name, defaultTTL = 0) {
