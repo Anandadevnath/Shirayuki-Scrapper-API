@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 async function fetchOverratedAnime() {
-    const url = 'https://kitsu.io/api/edge/anime?page[limit]=8&sort=-averageRating';
+    const url = 'https://kitsu.io/api/edge/anime?page[limit]=12&sort=-averageRating';
     const axiosInstance = axios.create({
         timeout: 1200,
         headers: { 'Accept': 'application/vnd.api+json', 'User-Agent': 'Mozilla/5.0 (compatible; ShirayukiScraper/1.0)'}
@@ -46,7 +46,7 @@ async function fetchOverratedAnime() {
             });
         }
 
-        if (availableResults.length <= 5) {
+    if (availableResults.length < 5) {
             try {
                 const jikanUrl = 'https://api.jikan.moe/v4/anime?order_by=score&sort=desc&limit=25';
                 const jikanResp = await axiosInstance.get(jikanUrl);
@@ -62,7 +62,7 @@ async function fetchOverratedAnime() {
                     const type = anime.title_english ? 'sub' : 'original';
                     return { title, image, score, episodes, type };
                 });
-                
+
                 for (let start = 0; start < jikanCandidates.length && availableResults.length < 5; start += batchSize) {
                     const batch = jikanCandidates.slice(start, start + batchSize);
                     const batchPromises = batch.map(c => checkAvailability(c.title));

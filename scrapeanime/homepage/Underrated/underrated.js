@@ -1,9 +1,10 @@
 import axios from 'axios';
 
 async function fetchUnderratedAnime() {
-    const url = 'https://kitsu.io/api/edge/anime?page[limit]=20&sort=-averageRating';
+    // reduce Kitsu page size and tighten timeout to avoid long waits on free hosting
+    const url = 'https://kitsu.io/api/edge/anime?page[limit]=12&sort=-averageRating';
     const axiosInstance = axios.create({
-        timeout: 3500,
+        timeout: 1200,
         headers: { 'Accept': 'application/vnd.api+json', 'User-Agent': 'Mozilla/5.0 (compatible; ShirayukiScraper/1.0)'}
     });
     let startTime = Date.now();
@@ -40,26 +41,30 @@ async function fetchUnderratedAnime() {
 
         scoredCandidates.sort((a, b) => (b.metric || 0) - (a.metric || 0));
 
+        // Check availability in small batches and stop early once we have 5 results
         const results = [];
         const existingTitles = new Set();
-        const availabilityPromises = scoredCandidates.map(c => checkAvailability(c.title));
-        const availabilityResults = await Promise.all(availabilityPromises);
-
-        for (let i = 0; i < scoredCandidates.length && results.length < 5; i++) {
-            const c = scoredCandidates[i];
-            if (existingTitles.has(c.title.toLowerCase())) continue;
-            const available = availabilityResults[i];
-            if (available === 'available') {
-                results.push({
-                    index: results.length + 1,
-                    title: c.title,
-                    image: c.image,
-                    score: c.score,
-                    episodes: c.episodes,
-                    type: c.type,
-                    available
-                });
-                existingTitles.add(c.title.toLowerCase());
+        const batchSize = 3;
+        for (let start = 0; start < scoredCandidates.length && results.length < 5; start += batchSize) {
+            const batch = scoredCandidates.slice(start, start + batchSize);
+            const batchPromises = batch.map(c => checkAvailability(c.title));
+            const batchResults = await Promise.all(batchPromises);
+            for (let i = 0; i < batch.length && results.length < 5; i++) {
+                const c = batch[i];
+                if (existingTitles.has(c.title.toLowerCase())) continue;
+                const available = batchResults[i];
+                if (available === 'available') {
+                    results.push({
+                        index: results.length + 1,
+                        title: c.title,
+                        image: c.image,
+                        score: c.score,
+                        episodes: c.episodes,
+                        type: c.type,
+                        available
+                    });
+                    existingTitles.add(c.title.toLowerCase());
+                }
             }
         }
 
@@ -69,7 +74,8 @@ async function fetchUnderratedAnime() {
                 const jikanResp = await axiosInstance.get(jikanUrl);
                 const jikanData = (jikanResp.data && jikanResp.data.data) || [];
 
-                const jikanCandidates = jikanData.map(anime => {
+                // limit Jikan candidates and process in batches so we can stop early
+                const jikanCandidates = jikanData.slice(0, 8).map(anime => {
                     const title = anime.title || anime.title_english || 'Unknown';
                     const score = anime.score || null;
                     const members = anime.members || 0;
@@ -80,16 +86,18 @@ async function fetchUnderratedAnime() {
                     return { title, score, metric, image, episodes, type };
                 }).filter(a => a.score && a.score >= 6.5 && a.metric > 20);
 
-                const jikanAvailPromises = jikanCandidates.map(c => checkAvailability(c.title));
-                const jikanAvailResults = await Promise.all(jikanAvailPromises);
-
-                for (let i = 0; i < jikanCandidates.length && results.length < 5; i++) {
-                    const c = jikanCandidates[i];
-                    const title = c.title || 'Unknown';
-                    if (existingTitles.has(title.toLowerCase())) continue;
-                    if (jikanAvailResults[i] === 'available') {
-                        results.push({ index: results.length + 1, title, image: c.image, score: c.score, episodes: c.episodes, type: c.type, available: 'available' });
-                        existingTitles.add(title.toLowerCase());
+                for (let start = 0; start < jikanCandidates.length && results.length < 5; start += batchSize) {
+                    const batch = jikanCandidates.slice(start, start + batchSize);
+                    const batchPromises = batch.map(c => checkAvailability(c.title));
+                    const batchResults = await Promise.all(batchPromises);
+                    for (let i = 0; i < batch.length && results.length < 5; i++) {
+                        const c = batch[i];
+                        const title = c.title || 'Unknown';
+                        if (existingTitles.has(title.toLowerCase())) continue;
+                        if (batchResults[i] === 'available') {
+                            results.push({ index: results.length + 1, title, image: c.image, score: c.score, episodes: c.episodes, type: c.type, available: 'available' });
+                            existingTitles.add(title.toLowerCase());
+                        }
                     }
                 }
             } catch (e) {
