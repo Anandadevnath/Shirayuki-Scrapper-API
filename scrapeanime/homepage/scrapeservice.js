@@ -190,3 +190,57 @@ export function getHomepageCacheMeta() {
 	if (!homepageCache) return null;
 	return { lastUpdated: homepageCache.timestamp, includeDetails: homepageCache._includeDetails };
 }
+
+// Helper to scrape a single section across configured sites using a scraper function
+async function scrapeSectionAcrossSites(scraperFn, includeDetails = false) {
+	const tasks = [
+		(async () => {
+			const $ = await fetchAndLoad('https://hianime.to/home');
+			const resolveUrl = resolveUrlFactory('https://hianime.to');
+			return scraperFn($, resolveUrl, 'hianime', includeDetails) || [];
+		})(),
+		(async () => {
+			const $ = await fetchAndLoad('https://123animehub.cc/home');
+			const resolveUrl = resolveUrlFactory('https://123animehub.cc');
+			return scraperFn($, resolveUrl, '123animehub', includeDetails) || [];
+		})(),
+	];
+
+	const results = await Promise.allSettled(tasks);
+	const combined = [];
+	const errors = [];
+
+	if (results[0].status === 'fulfilled') combined.push(...results[0].value);
+	else errors.push({ source: 'hianime', error: String(results[0].reason) });
+
+	if (results[1].status === 'fulfilled') combined.push(...results[1].value);
+	else errors.push({ source: '123animehub', error: String(results[1].reason) });
+
+	// dedupe
+	const seen = new Set();
+	const deduped = [];
+	for (const it of combined) {
+		const contentKey = (it.href || it.title || it.image || '').toString().toLowerCase();
+		if (!contentKey) continue;
+		if (!seen.has(contentKey)) {
+			seen.add(contentKey);
+			deduped.push(it);
+		}
+	}
+
+	const result = { success: true, data: deduped };
+	if (errors.length) result.errors = errors;
+	return result;
+}
+
+export async function scrapeMostPopularAcrossSites(includeDetails = false) {
+	return scrapeSectionAcrossSites(scrapeMostPopular, includeDetails);
+}
+
+export async function scrapeMostFavoriteAcrossSites(includeDetails = false) {
+	return scrapeSectionAcrossSites(scrapeMostFavorite, includeDetails);
+}
+
+export async function scrapeTopAiringAcrossSites(includeDetails = false) {
+	return scrapeSectionAcrossSites(scrapeTopAiring, includeDetails);
+}

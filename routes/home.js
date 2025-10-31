@@ -26,8 +26,11 @@ router.get('/', async (req, res) => {
       return;
     }
 
+    // Remove sections that are now exposed as separate endpoints
+    const filtered = (result.data || []).filter(it => !['most_popular', 'most_favorite', 'top_airing'].includes(it.section));
+
     // Transform 'underrated' items to include only the requested public fields
-    const transformedData = result.data.map((item) => {
+    const transformedData = filtered.map((item) => {
       if (item && item.section === 'underrated') {
         return {
           index: typeof item.index !== 'undefined' ? item.index : null,

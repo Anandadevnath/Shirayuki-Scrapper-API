@@ -38,7 +38,6 @@ npm install
 3. Start the server:
 
 ```bash
-npm install
 npm start
 ```
 
@@ -56,6 +55,13 @@ Base URL: `http://localhost:5000`
 
 - **GET** `/` — root information and a list of common endpoints
 - **GET** `/home` — Get trending anime, latest releases, popular anime, and more
+
+Additional homepage sections (also available as standalone endpoints):
+
+- **GET** `/most_popular` — Most popular anime aggregated from sources
+- **GET** `/most_favorite` — Most favorited anime aggregated from sources
+- **GET** `/top_airing` — Currently top airing anime
+- **GET** `/rarest` — Curated/hidden-gem / rarest anime discovered across sources
 
 ### 🔍 Search
 

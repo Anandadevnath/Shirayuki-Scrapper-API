@@ -14,6 +14,10 @@ import searchRouter from './routes/search.js';
 import ongingRouter from './routes/onging.js';
 import recentUpdatesRouter from './routes/recent_updates.js';
 import underratedRouter from './routes/underrated.js';
+import overratedRouter from './routes/overrated.js';
+import mostPopularRouter from './routes/most_popular.js';
+import mostFavoriteRouter from './routes/most_favorite.js';
+import topAiringRouter from './routes/top_airing.js';
 
 dotenv.config();
 const app = express();
@@ -36,6 +40,11 @@ app.get('/', (req, res) => {
                     "/home",
                     "/onging",
                     "/recent_updates",
+                    "/underrated",
+                    "/overrated",
+                    "/most_popular",
+                    "/most_favorite",
+                    "/top_airing",
                 ]
             },
             { name: "Top 10 animes", path: "/top10" },
@@ -49,6 +58,7 @@ app.get('/', (req, res) => {
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "Schedule from DB", path: "/db-schedule" },
+            { name: "Overrated animes (mixed sources)", path: "/overrated" },
         ]
     });
 });
@@ -68,6 +78,10 @@ app.use('/onging', ongingRouter);
 app.use('/ongoing', ongingRouter);
 app.use('/recent_updates', recentUpdatesRouter);
 app.use('/underrated', underratedRouter);
+app.use('/overrated', overratedRouter);
+app.use('/most_popular', mostPopularRouter);
+app.use('/most_favorite', mostFavoriteRouter);
+app.use('/top_airing', topAiringRouter);
 
 const PORT = process.env.PORT || 5000;
 
