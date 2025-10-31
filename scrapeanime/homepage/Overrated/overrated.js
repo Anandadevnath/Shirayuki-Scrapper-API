@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 async function fetchOverratedAnime() {
-    // Use Kitsu API to fetch 10 anime sorted by average rating (highest first)
     const url = 'https://kitsu.io/api/edge/anime?page[limit]=10&sort=-averageRating';
     try {
         const response = await axios.get(url, { headers: { 'Accept': 'application/vnd.api+json' } });
@@ -11,22 +10,20 @@ async function fetchOverratedAnime() {
             try {
                 const searchUrl = `https://123animehub.cc/search?keyword=${encodeURIComponent(title)}`;
                 const res = await axios.get(searchUrl);
-                // Simple check: does the title appear in the HTML?
                 return res.data.toLowerCase().includes(title.toLowerCase()) ? 'available' : 'not available';
             } catch {
                 return 'not available';
             }
         };
 
-        // Map Kitsu results to the existing output shape and check availability for each
         const results = [];
         for (let idx = 0; idx < data.length; idx++) {
             const item = data[idx];
             const attrs = item.attributes || {};
             const title = attrs.canonicalTitle || (attrs.titles && (attrs.titles.en || attrs.titles.en_jp || attrs.titles.ja_jp)) || 'Unknown';
             const image = (attrs.posterImage && (attrs.posterImage.original || attrs.posterImage.large || attrs.posterImage.medium || attrs.posterImage.small)) || '';
-            const rawScore = attrs.averageRating ? Number(attrs.averageRating) : null; // Kitsu averageRating is 0-100 string
-            const score = rawScore !== null ? Math.round((rawScore / 10) * 100) / 100 : null; // convert to 0-10 scale with 2 decimals
+            const rawScore = attrs.averageRating ? Number(attrs.averageRating) : null; 
+            const score = rawScore !== null ? Math.round((rawScore / 10) * 100) / 100 : null; 
             const episodes = attrs.episodeCount || null;
             const type = attrs.subtype ? attrs.subtype.toLowerCase() : 'unknown';
 
@@ -43,12 +40,10 @@ async function fetchOverratedAnime() {
             });
         }
 
-        // Return only available anime and reindex sequentially
         let availableResults = results
             .filter(anime => anime.available === 'available')
             .map((a, i) => ({ ...a, index: i + 1 }));
 
-        // If available results are <= 5, fetch from Jikan as a fallback to fill up to 5 items
         if (availableResults.length <= 5) {
             try {
                 const jikanUrl = 'https://api.jikan.moe/v4/anime?order_by=score&sort=desc&limit=25';
@@ -82,12 +77,10 @@ async function fetchOverratedAnime() {
                     }
                 }
             } catch (e) {
-                // If Jikan fails, just return whatever we have
                 console.warn('Jikan fallback failed:', e && e.message ? e.message : e);
             }
         }
 
-    // Limit to 5 items, reindex final results and return
     availableResults = availableResults.slice(0, 5).map((a, i) => ({ ...a, index: i + 1 }));
     return availableResults;
     } catch (error) {

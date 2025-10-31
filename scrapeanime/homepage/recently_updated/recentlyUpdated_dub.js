@@ -164,7 +164,6 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
       });
       const data = resp.data && resp.data.data ? resp.data.data : [];
       if (data.length) {
-        // Best match by normalized canonical title
         let best = data.find(r => normalizeForCompare(r.attributes.canonicalTitle) === normalizeForCompare(searchTitle));
         if (!best) best = data[0];
         const titles = best.attributes.titles || {};
@@ -174,7 +173,6 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
         }
       }
     } catch (e) {
-      // ignore error
     }
     return null;
   }

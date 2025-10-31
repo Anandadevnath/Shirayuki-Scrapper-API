@@ -26,10 +26,10 @@ export function resolveUrlFactory(base) {
 export async function fetchAndLoad(url) {
   const resp = await axios.get(url, { 
     headers: defaultHeaders, 
-    timeout: 5000, // Reduced to 5 seconds for production
-    maxRedirects: 2, // Reduce redirects further
+    timeout: 5000, 
+    maxRedirects: 2, 
     validateStatus: function (status) {
-      return status >= 200 && status < 300; // Only accept 2xx status codes
+      return status >= 200 && status < 300; 
     }
   });
   return load(resp.data);
