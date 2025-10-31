@@ -1,23 +1,32 @@
 import axios from 'axios';
+import cacheFactory from '../../../service/simpleCache.js';
 
 async function fetchUnderratedAnime() {
     // reduce Kitsu page size and tighten timeout to avoid long waits on free hosting
     const url = 'https://kitsu.io/api/edge/anime?page[limit]=12&sort=-averageRating';
     const axiosInstance = axios.create({
-        timeout: 1200,
+        timeout: 1500,
         headers: { 'Accept': 'application/vnd.api+json', 'User-Agent': 'Mozilla/5.0 (compatible; ShirayukiScraper/1.0)'}
     });
+    const availabilityCache = cacheFactory.createNamespace('availability', 10 * 60 * 1000); // 10 minutes
     let startTime = Date.now();
     try {
         const response = await axiosInstance.get(url);
         const data = response.data.data || [];
 
         const checkAvailability = async (title) => {
+            const key = `availability:${(title || '').toLowerCase()}`;
+            const cached = availabilityCache.get(key);
+            if (cached) return cached;
             try {
                 const searchUrl = `https://123animehub.cc/search?keyword=${encodeURIComponent(title)}`;
                 const res = await axiosInstance.get(searchUrl);
-                return typeof res.data === 'string' && res.data.toLowerCase().includes(title.toLowerCase()) ? 'available' : 'not available';
+                const available = typeof res.data === 'string' && res.data.toLowerCase().includes(title.toLowerCase()) ? 'available' : 'not available';
+                availabilityCache.set(key, available, 10 * 60 * 1000);
+                return available;
             } catch {
+                // cache negative result for short time to avoid hammering a failing host
+                availabilityCache.set(key, 'not available', 60 * 1000);
                 return 'not available';
             }
         };
