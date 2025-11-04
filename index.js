@@ -11,7 +11,7 @@ import scheduleRouter from './routes/schedule.js';
 import dbScheduleRouter from './routes/db-schedule.js';
 import genreRouter from './routes/genre.js';
 import searchRouter from './routes/search.js';
-import ongingRouter from './routes/onging.js';
+import ongingRouter from './routes/ongoing.js';
 import recentUpdatesRouter from './routes/recent_updates.js';
 import underratedRouter from './routes/underrated.js';
 import overratedRouter from './routes/overrated.js';
@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
             {
                 home: [
                     "/home",
-                    "/onging",
+                    "/ongoing",
                     "/recent_updates",
                     "/underrated",
                     "/overrated",

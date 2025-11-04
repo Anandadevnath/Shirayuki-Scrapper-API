@@ -1,5 +1,5 @@
 import axios from 'axios';
-import simpleCache from '../../../service/simpleCache.js';
+import romanizeJapanese from '../../../util/romanizeJapanese.js';
 
 async function mapWithConcurrency(list, mapper, limit) {
   const results = new Array(list.length);
@@ -91,9 +91,7 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
     });
   });
 
-  // persistent caches (shared across requests)
-  const imdbCache = simpleCache.createNamespace('imdb', 24 * 60 * 60 * 1000);
-  const kitsuCache = simpleCache.createNamespace('kitsu', 24 * 60 * 60 * 1000);
+
 
   async function fetchImdbRating(title) {
     if (!title) return null;
@@ -161,8 +159,6 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
     if (!title) return null;
     const searchTitle = title.replace(/\bDub\b/i, '').trim();
     try {
-      const cacheKey = searchTitle.toString().toLowerCase();
-      if (kitsuCache.has(cacheKey)) return kitsuCache.get(cacheKey);
       const resp = await axios.get('https://kitsu.io/api/edge/anime', {
         params: { 'filter[text]': searchTitle, 'page[limit]': 5 },
         timeout: 4000
@@ -175,7 +171,6 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
         const english = titles.en || titles.en_jp || best.attributes.canonicalTitle;
         if (english) {
           const val = type === 'dub' ? english + ' (Dub)' : english;
-          kitsuCache.set(cacheKey, val);
           return val;
         }
       }
@@ -185,19 +180,19 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
   }
 
   const enriched = await mapWithConcurrency(dedup, async (it) => {
-    const rating = await fetchImdbRating(it.title || '');
     const englishTitle = await fetchEnglishTitle(it.title || '', it.type);
     const image = it.image || null;
+    const japanese_title = romanizeJapanese(it.title || '');
     return {
       title: it.title,
       englishTitle,
+      japanese_title,
       href: it.href,
       image: image,
       Dub: it.episode,
       source: it.source,
       section: it.section,
-      type: it.type,
-      rating
+      type: it.type
     };
   }, CONCURRENCY);
 

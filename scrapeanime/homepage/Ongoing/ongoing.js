@@ -153,10 +153,9 @@ export default async function scrapeOnging() {
 
   const CONCURRENCY = 6;
   const enriched = await mapWithConcurrency(dedup, async (it) => {
-    const rating = await fetchImdbRating(it.title || '');
     const slug = slugifyTitle(it.title || '');
     const image = slug ? `https://123animehub.cc/imgs/poster/${slug}.jpg` : it.image || null;
-    return { title: it.title, image: image, episode: it.episode, rating };
+    return { title: it.title, image: image, episode: it.episode };
   }, CONCURRENCY);
 
   const extraction_time_seconds = parseFloat(((Date.now() - start) / 1000).toFixed(3));

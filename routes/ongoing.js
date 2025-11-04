@@ -1,5 +1,5 @@
 import express from 'express';
-import scrapeOnging from '../scrapeanime/homepage/Ongoing/onging.js';
+import scrapeOnging from '../scrapeanime/homepage/Ongoing/ongoing.js';
 
 const router = express.Router();
 
