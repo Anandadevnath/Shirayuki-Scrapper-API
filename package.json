@@ -39,7 +39,8 @@
     "mongoose": "^8.16.1",
     "puppeteer": "^24.20.0",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "wanakana": "^5.3.1"
   },
   "engines": {
     "node": ">=18.0.0"

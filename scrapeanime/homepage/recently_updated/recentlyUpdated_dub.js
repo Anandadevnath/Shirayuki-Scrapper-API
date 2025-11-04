@@ -29,6 +29,11 @@ function normalizeForCompare(s) {
     .trim();
 }
 
+const ENGLISH_TO_JAPANESE_ROMAJI_MAP = {
+  'The Banished Court Magician Aims to Become the Strongest': 'Mikata ga Yowasugite Hojo Mahou ni Tesshiteita Kyuutei Mahoushi, Tsuihou sarete Saikyou wo Mezashimasu',
+  // Add more mappings as needed
+};
+
 export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
   const items = [];
 
@@ -182,7 +187,14 @@ export default async function scrapeRecentlyUpdatedDub($, resolveUrl, source) {
   const enriched = await mapWithConcurrency(dedup, async (it) => {
     const englishTitle = await fetchEnglishTitle(it.title || '', it.type);
     const image = it.image || null;
-    const japanese_title = romanizeJapanese(it.title || '');
+    let baseEnglish = (englishTitle || '').replace(/\s*\(?Dub\)?/gi, '').trim();
+    let mappedRomaji = ENGLISH_TO_JAPANESE_ROMAJI_MAP[baseEnglish];
+    let japanese_title;
+    if (mappedRomaji) {
+      japanese_title = mappedRomaji;
+    } else {
+      japanese_title = romanizeJapanese(it.title || '');
+    }
     return {
       title: it.title,
       englishTitle,
