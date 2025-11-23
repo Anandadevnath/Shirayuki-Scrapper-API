@@ -18,6 +18,7 @@ import overratedRouter from './routes/overrated.js';
 import mostPopularRouter from './routes/most_popular.js';
 import mostFavoriteRouter from './routes/most_favorite.js';
 import topAiringRouter from './routes/top_airing.js';
+import trendingRouter from './routes/trending.js';
 
 dotenv.config();
 const app = express();
@@ -30,6 +31,7 @@ app.use((req, res, next) => {
     next();
 });
 
+
 app.get('/', (req, res) => {
     res.json({
         message: " Welcome to Shirayuki Anime Scraper!",
@@ -38,6 +40,7 @@ app.get('/', (req, res) => {
             {
                 home: [
                     "/home",
+                    "/trending",
                     "/ongoing",
                     "/recent_updates",
                     "/underrated",
@@ -58,13 +61,13 @@ app.get('/', (req, res) => {
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "Schedule from DB", path: "/db-schedule" },
-            { name: "Overrated animes (mixed sources)", path: "/overrated" },
         ]
     });
 });
 
 app.use('/', episodeRouter);
 app.use('/home', homeRouter);
+app.use('/trending', trendingRouter);
 app.use('/top10', top10Router);
 app.use('/monthly10', monthlyRouter);
 app.use('/weekly10', weeklyRouter);
