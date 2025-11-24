@@ -1,6 +1,6 @@
 # 🌸 Shirayuki Anime Scraper API
 
-It is a anime scraping API that provides anime information, streaming links, and search functionality from HiAnime and 123animehub.
+It is a anime scraping API that provides anime information, streaming links, and search functionality from HiAnime and 123anime.
 
 ## 🎯 Goals of this Website
 
@@ -129,21 +129,21 @@ GET /search?keyword=one%20piece
       "title": "One Piece",
       "sub": true,
       "dub": false,
-      "image": "https://123animehub.cc/imgs/poster/one-piece.jpg",
+      "image": "https://123anime.la/imgs/poster/one-piece.jpg",
       "episodes": "1145"
     },
     {
       "title": "One Piece (Dub)",
       "sub": false,
       "dub": true,
-      "image": "https://123animehub.cc/imgs/poster/one-piece-dub.jpg",
+      "image": "https://123anime.la/imgs/poster/one-piece-dub.jpg",
       "episodes": "1133"
     }
   ],
   "extraction_time_seconds": 1.224,
   "message": "Search results for \"one piece\"",
   "timestamp": "2025-10-08T16:54:26.438Z",
-  "source_url": "https://123animehub.cc/search?keyword=one%20piece"
+  "source_url": "https://123anime.la/search?keyword=one%20piece"
 }
 ```
 
@@ -160,7 +160,7 @@ GET /genere/Action?page=1
     {
       "index": 1,
       "title": "Attack on Titan",
-      "image": "https://123animehub.cc/imgs/poster/attack-on-titan.jpg",
+      "image": "https://123anime.la/imgs/poster/attack-on-titan.jpg",
       "sub": true,
       "dub": true,
       "episodes": "87"
@@ -168,7 +168,7 @@ GET /genere/Action?page=1
     {
       "index": 2,
       "title": "Demon Slayer",
-      "image": "https://123animehub.cc/imgs/poster/demon-slayer.jpg",
+      "image": "https://123anime.la/imgs/poster/demon-slayer.jpg",
       "sub": true,
       "dub": true,
       "episodes": "44"
@@ -193,7 +193,7 @@ GET /az-all-anime/all?page=1
     {
       "index": 1,
       "title": "86 EIGHTY-SIX",
-      "image": "https://123animehub.cc/imgs/poster/86-eighty-six.jpg",
+      "image": "https://123anime.la/imgs/poster/86-eighty-six.jpg",
       "sub": true,
       "dub": true,
       "episodes": "23"
@@ -227,7 +227,7 @@ GET /top10
     {
       "index": 1,
       "title": "Demon Slayer: Kimetsu no Yaiba",
-      "image": "https://123animehub.cc/imgs/poster/demon-slayer.jpg",
+      "image": "https://123anime.la/imgs/poster/demon-slayer.jpg",
       "anime_redirect_link": "/anime/demon-slayer",
       "episodes": "44",
       "audio_type": "SUB"
@@ -283,7 +283,7 @@ GET /search/suggestions?q=demon
     {
       "index": 1,
       "title": "Demon Slayer: Kimetsu no Yaiba",
-      "image": "https://123animehub.cc/imgs/poster/demon-slayer.jpg",
+      "image": "https://123anime.la/imgs/poster/demon-slayer.jpg",
       "episode": "44",
       "calendar_date": "2023",
       "status": "completed",
@@ -309,7 +309,7 @@ GET /home
     "trending": [
       {
         "title": "Jujutsu Kaisen",
-        "image": "https://123animehub.cc/imgs/poster/jujutsu-kaisen.jpg",
+        "image": "https://123anime.la/imgs/poster/jujutsu-kaisen.jpg",
         "episode": "24",
         "status": "completed"
       }
@@ -317,7 +317,7 @@ GET /home
     "latest": [
       {
         "title": "Chainsaw Man",
-        "image": "https://123animehub.cc/imgs/poster/chainsaw-man.jpg",
+        "image": "https://123anime.la/imgs/poster/chainsaw-man.jpg",
         "episode": "12",
         "status": "airing"
       }
@@ -325,7 +325,7 @@ GET /home
     "popular": [
       {
         "title": "Attack on Titan",
-        "image": "https://123animehub.cc/imgs/poster/attack-on-titan.jpg",
+        "image": "https://123anime.la/imgs/poster/attack-on-titan.jpg",
         "episode": "87",
         "status": "completed"
       }
@@ -350,7 +350,7 @@ GET /weekly10
     {
       "index": 1,
       "title": "Frieren: Beyond Journey's End",
-      "image": "https://123animehub.cc/imgs/poster/frieren.jpg",
+      "image": "https://123anime.la/imgs/poster/frieren.jpg",
       "anime_redirect_link": "/anime/frieren",
       "episodes": "28",
       "audio_type": "SUB"
@@ -358,7 +358,7 @@ GET /weekly10
     {
       "index": 2,
       "title": "Demon Slayer: Kimetsu no Yaiba",
-      "image": "https://123animehub.cc/imgs/poster/demon-slayer.jpg",
+      "image": "https://123anime.la/imgs/poster/demon-slayer.jpg",
       "anime_redirect_link": "/anime/demon-slayer",
       "episodes": "44",
       "audio_type": "SUB"
@@ -383,7 +383,7 @@ GET /monthly10
     {
       "index": 1,
       "title": "One Piece",
-      "image": "https://123animehub.cc/imgs/poster/one-piece.jpg",
+      "image": "https://123anime.la/imgs/poster/one-piece.jpg",
       "anime_redirect_link": "/anime/one-piece",
       "episodes": "1145",
       "audio_type": "SUB"
@@ -391,7 +391,7 @@ GET /monthly10
     {
       "index": 2,
       "title": "Attack on Titan",
-      "image": "https://123animehub.cc/imgs/poster/attack-on-titan.jpg",
+      "image": "https://123anime.la/imgs/poster/attack-on-titan.jpg",
       "anime_redirect_link": "/anime/attack-on-titan",
       "episodes": "87",
       "audio_type": "SUB"
@@ -415,7 +415,7 @@ GET /anime/one-piece-dub
   "data": {
     "title": "One Piece (Dub)",
     "anime_id": "one-piece-dub",
-    "image": "https://123animehub.cc/imgs/poster/one-piece-dub.jpg",
+    "image": "https://123anime.la/imgs/poster/one-piece-dub.jpg",
     "description": "Monkey D. Luffy refuses to let anyone or anything stand in the way of his quest to become the king of all pirates...",
     "status": "Ongoing",
     "release_date": "1999",

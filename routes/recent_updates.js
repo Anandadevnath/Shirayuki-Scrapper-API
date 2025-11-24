@@ -28,14 +28,14 @@ router.get('/', async (req, res) => {
       return res.json({ ...cached, cached: true });
     }
 
-    const url = 'https://123animehub.cc/home';
+    const url = 'https://123anime.la/home';
     const $ = await fetchAndLoad(url);
-    const resolveUrl = resolveUrlFactory('https://123animehub.cc');
+    const resolveUrl = resolveUrlFactory('https://123anime.la');
 
     // Fetch both sub and dub
     const [subItems, dubItems] = await Promise.all([
-      scrapeRecentlyUpdated($, resolveUrl, '123animehub'),
-      scrapeRecentlyUpdatedDub($, resolveUrl, '123animehub')
+      scrapeRecentlyUpdated($, resolveUrl, '123anime'),
+      scrapeRecentlyUpdatedDub($, resolveUrl, '123anime')
     ]);
 
     // Merge and deduplicate

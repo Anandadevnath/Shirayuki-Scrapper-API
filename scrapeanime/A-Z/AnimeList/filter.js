@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 async function scrapeAnimeByLetter(letter, page = 1) {
-    const url = `https://123animehub.cc/az-all-anime/${letter}/?page=${page}`;
+    const url = `https://123anime.la/az-all-anime/${letter}/?page=${page}`;
     const { data } = await axios.get(url);
     const $ = cheerio.load(data);
     const animeList = [];
@@ -16,7 +16,7 @@ async function scrapeAnimeByLetter(letter, page = 1) {
                    imgElement.attr('data-lazy') || '';
         
         if (image && !image.startsWith('http')) {
-            image = image.startsWith('/') ? 'https://123animehub.cc' + image : 'https://123animehub.cc/' + image;
+            image = image.startsWith('/') ? 'https://123anime.la' + image : 'https://123anime.la/' + image;
         }
         
         if (!image || image.includes('no_poster.jpg')) {

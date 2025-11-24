@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
       extraction_time_seconds: duration,
       message: `Search results for "${keyword}"`,
       timestamp: new Date().toISOString(),
-      source_url: `https://123animehub.cc/search?keyword=${encodeURIComponent(keyword)}`
+      source_url: `https://123anime.la/search?keyword=${encodeURIComponent(keyword)}`
     });
   } catch (error) {
     const duration = (Date.now() - start) / 1000;
@@ -63,7 +63,7 @@ router.get('/suggestions', async (req, res) => {
       extraction_time_seconds: duration,
       message: `Search suggestions for "${query}"`,
       timestamp: new Date().toISOString(),
-      source_url: `https://123animehub.cc/search?keyword=${encodeURIComponent(query)}`
+      source_url: `https://123anime.la/search?keyword=${encodeURIComponent(query)}`
     });
   } catch (error) {
     const duration = (Date.now() - start) / 1000;

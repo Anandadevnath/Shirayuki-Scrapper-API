@@ -10,7 +10,7 @@ router.get('/:genre', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const axios = (await import('axios')).default;
     const cheerio = await import('cheerio');
-    const url = `https://123animehub.cc/genere/${genre}?page=${page}`;
+    const url = `https://123anime.la/genere/${genre}?page=${page}`;
     let total_counts = null;
     try {
       const { data: html } = await axios.get(url);

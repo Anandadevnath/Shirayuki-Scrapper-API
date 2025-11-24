@@ -36,9 +36,9 @@ async function mapWithConcurrency(list, mapper, limit) {
 
 export default async function scrapeOnging() {
   const start = Date.now();
-  const url = 'https://123animehub.cc/home';
+  const url = 'https://123anime.la/home';
   const $ = await fetchAndLoad(url);
-  const resolveUrl = resolveUrlFactory('https://123animehub.cc');
+  const resolveUrl = resolveUrlFactory('https://123anime.la');
 
   const items = [];
   $('div.widget').each((i, widget) => {
@@ -154,7 +154,7 @@ export default async function scrapeOnging() {
   const CONCURRENCY = 6;
   const enriched = await mapWithConcurrency(dedup, async (it) => {
     const slug = slugifyTitle(it.title || '');
-    const image = slug ? `https://123animehub.cc/imgs/poster/${slug}.jpg` : it.image || null;
+    const image = slug ? `https://123anime.la/imgs/poster/${slug}.jpg` : it.image || null;
     return { title: it.title, image: image, episode: it.episode };
   }, CONCURRENCY);
 

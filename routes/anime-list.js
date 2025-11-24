@@ -10,7 +10,7 @@ router.get('/:letter', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const axios = (await import('axios')).default;
     const cheerio = await import('cheerio');
-    const url = `https://123animehub.cc/az-all-anime/${letter}/?page=${page}`;
+    const url = `https://123anime.la/az-all-anime/${letter}/?page=${page}`;
     let total_counts = null;
     try {
       const { data: html } = await axios.get(url);

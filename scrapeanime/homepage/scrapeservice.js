@@ -60,7 +60,7 @@ async function scrapeSite(url, base, source, includeDetails = false) {
 		if (fav && fav.length) items.push(...fav);
 	} catch (e) { }
 	try {
-		if (source !== '123animehub') {
+		if (source !== '123anime') {
 			const slider = scrapeSlider($, resolveUrl, source);
 			if (slider && slider.length) items.push(...slider);
 		}
@@ -92,7 +92,7 @@ async function scrapeSite(url, base, source, includeDetails = false) {
 export async function scrapeHomepage(includeDetails = false) {
 	const tasks = [
 		scrapeSite('https://hianime.to/home', 'https://hianime.to', 'hianime', includeDetails),
-		scrapeSite('https://123animehub.cc/home', 'https://123animehub.cc', '123animehub', includeDetails),
+		scrapeSite('https://123anime.la/home', 'https://123anime.la', '123anime', includeDetails),
 	];
 
 	const results = await Promise.allSettled(tasks);
@@ -104,7 +104,7 @@ export async function scrapeHomepage(includeDetails = false) {
 	else errors.push({ source: 'hianime', error: String(results[0].reason) });
 
 	if (results[1].status === 'fulfilled') combined.push(...results[1].value);
-	else errors.push({ source: '123animehub', error: String(results[1].reason) });
+	else errors.push({ source: '123anime', error: String(results[1].reason) });
 
 	const seen = new Set();
 	const deduped = [];
@@ -200,9 +200,9 @@ async function scrapeSectionAcrossSites(scraperFn, includeDetails = false) {
 			return scraperFn($, resolveUrl, 'hianime', includeDetails) || [];
 		})(),
 		(async () => {
-			const $ = await fetchAndLoad('https://123animehub.cc/home');
-			const resolveUrl = resolveUrlFactory('https://123animehub.cc');
-			return scraperFn($, resolveUrl, '123animehub', includeDetails) || [];
+			const $ = await fetchAndLoad('https://123anime.la/home');
+			const resolveUrl = resolveUrlFactory('https://123anime.la');
+			return scraperFn($, resolveUrl, '123anime', includeDetails) || [];
 		})(),
 	];
 
@@ -214,7 +214,7 @@ async function scrapeSectionAcrossSites(scraperFn, includeDetails = false) {
 	else errors.push({ source: 'hianime', error: String(results[0].reason) });
 
 	if (results[1].status === 'fulfilled') combined.push(...results[1].value);
-	else errors.push({ source: '123animehub', error: String(results[1].reason) });
+	else errors.push({ source: '123anime', error: String(results[1].reason) });
 
 	// dedupe
 	const seen = new Set();

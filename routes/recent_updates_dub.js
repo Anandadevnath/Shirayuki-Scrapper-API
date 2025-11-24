@@ -7,11 +7,11 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   const start = Date.now();
   try {
-    const url = 'https://123animehub.cc/home';
+    const url = 'https://123anime.la/home';
     const $ = await fetchAndLoad(url);
-    const resolveUrl = resolveUrlFactory('https://123animehub.cc');
+    const resolveUrl = resolveUrlFactory('https://123anime.la');
 
-    const items = await scrapeRecentlyUpdatedDub($, resolveUrl, '123animehub');
+    const items = await scrapeRecentlyUpdatedDub($, resolveUrl, '123anime');
 
     const extraction_time_seconds = parseFloat(((Date.now() - start) / 1000).toFixed(3));
     res.json({ success: true, data: items, extraction_time_seconds });

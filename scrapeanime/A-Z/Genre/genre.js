@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio';
 
 
 export async function scrapeAnimeByGenre(genre, page = 1) {
-	const url = `https://123animehub.cc/genere/${genre}?page=${page}`;
+	const url = `https://123anime.la/genere/${genre}?page=${page}`;
 	const { data } = await axios.get(url);
 	const $ = cheerio.load(data);
 	const animeList = [];
@@ -17,7 +17,7 @@ export async function scrapeAnimeByGenre(genre, page = 1) {
 				   imgElement.attr('data-lazy') || '';
 		
 		if (image && !image.startsWith('http')) {
-			image = image.startsWith('/') ? 'https://123animehub.cc' + image : 'https://123animehub.cc/' + image;
+			image = image.startsWith('/') ? 'https://123anime.la' + image : 'https://123anime.la/' + image;
 		}
 		
 		if (!image || image.includes('no_poster.jpg')) {

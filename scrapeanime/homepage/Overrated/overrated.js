@@ -18,7 +18,7 @@ async function fetchOverratedAnime() {
             const cached = availabilityCache.get(key);
             if (cached) return cached;
             try {
-                const searchUrl = `https://123animehub.cc/search?keyword=${encodeURIComponent(title)}`;
+                const searchUrl = `https://123anime.la/search?keyword=${encodeURIComponent(title)}`;
                 const res = await axiosInstance.get(searchUrl);
                 const available = typeof res.data === 'string' && res.data.toLowerCase().includes(title.toLowerCase()) ? 'available' : 'not available';
                 availabilityCache.set(key, available, 10 * 60 * 1000);

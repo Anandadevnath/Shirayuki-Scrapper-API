@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 export async function scrapeAnimeSearch(query) {
-    const url = `https://123animehub.cc/search?keyword=${encodeURIComponent(query)}`;
+    const url = `https://123anime.la/search?keyword=${encodeURIComponent(query)}`;
 
     try {
         const { data } = await axios.get(url);
@@ -44,7 +44,7 @@ export async function scrapeAnimeSearch(query) {
                         imgElement.attr('data-lazy') || '';
 
                     if (image && !image.startsWith('http')) {
-                        image = image.startsWith('/') ? 'https://123animehub.cc' + image : 'https://123animehub.cc/' + image;
+                        image = image.startsWith('/') ? 'https://123anime.la' + image : 'https://123anime.la/' + image;
                     }
 
                     if (!image || image.includes('no_poster.jpg')) {

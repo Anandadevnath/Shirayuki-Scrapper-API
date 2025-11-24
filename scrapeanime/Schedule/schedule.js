@@ -62,7 +62,7 @@ async function scrapeSchedule() {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
         // Use navigation with retries to reduce chance of transient navigation timeouts
-        await navigateWithRetries('https://123animehub.cc', { waitUntil: 'networkidle2', timeout: 30000 }, 3);
+        await navigateWithRetries('https://123anime.la', { waitUntil: 'networkidle2', timeout: 30000 }, 3);
 
         let bodyFound = false;
         for (let i = 0; i < 2 && !bodyFound; i++) {

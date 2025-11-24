@@ -11,14 +11,14 @@ function japanese_lang(engTitle) {
 
 router.get('/anime/:slug', async (req, res) => {
   const { slug } = req.params;
-  const animeUrl = `https://123animehub.cc/anime/${slug}`;
+  const animeUrl = `https://123anime.la/anime/${slug}`;
   const startTime = Date.now();
   try {
     const { data: html } = await axios.get(animeUrl);
     const $ = cheerio.load(html);
     const title = $('h2.title').text().trim() || $('h1').first().text().trim();
     let image = $('.thumb img').attr('src') || $('img').first().attr('src');
-    if (image && image.startsWith('/')) image = `https://123animehub.cc${image}`;
+    if (image && image.startsWith('/')) image = `https://123anime.la${image}`;
     let description = '';
     if ($('.desc .long').length) description = $('.desc .long').text().replace(/\s+/g, ' ').trim();
     else if ($('.desc').length) description = $('.desc').text().replace(/\s+/g, ' ').trim();
