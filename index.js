@@ -19,6 +19,7 @@ import mostPopularRouter from './routes/most_popular.js';
 import mostFavoriteRouter from './routes/most_favorite.js';
 import topAiringRouter from './routes/top_airing.js';
 import trendingRouter from './routes/trending.js';
+import testRouter from './routes/test.js';
 
 dotenv.config();
 const app = express();
@@ -61,6 +62,7 @@ app.get('/', (req, res) => {
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "Schedule from DB", path: "/db-schedule" },
+            { name: "Test iframe scraper", path: "/test" },
         ]
     });
 });
@@ -85,6 +87,7 @@ app.use('/overrated', overratedRouter);
 app.use('/most_popular', mostPopularRouter);
 app.use('/most_favorite', mostFavoriteRouter);
 app.use('/top_airing', topAiringRouter);
+app.use('/test', testRouter);
 
 const PORT = process.env.PORT || 5000;
 
