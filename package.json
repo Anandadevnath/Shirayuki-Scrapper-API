@@ -26,7 +26,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js",
+    "dev": "npx nodemon index.js",
     "test": "echo \"Warning: no test specified\" && exit 0"
   },
   "dependencies": {

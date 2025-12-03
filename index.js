@@ -19,6 +19,7 @@ import mostPopularRouter from './routes/most_popular.js';
 import mostFavoriteRouter from './routes/most_favorite.js';
 import topAiringRouter from './routes/top_airing.js';
 import trendingRouter from './routes/trending.js';
+import sliderRouter from './routes/slider.js';
 import testRouter from './routes/test.js';
 
 dotenv.config();
@@ -41,6 +42,7 @@ app.get('/', (req, res) => {
             {
                 home: [
                     "/home",
+                    "/slider",
                     "/trending",
                     "/ongoing",
                     "/recent_updates",
@@ -62,13 +64,13 @@ app.get('/', (req, res) => {
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "Schedule from DB", path: "/db-schedule" },
-            { name: "Test iframe scraper", path: "/test" },
         ]
     });
 });
 
 app.use('/', episodeRouter);
 app.use('/home', homeRouter);
+app.use('/slider', sliderRouter);
 app.use('/trending', trendingRouter);
 app.use('/top10', top10Router);
 app.use('/monthly10', monthlyRouter);

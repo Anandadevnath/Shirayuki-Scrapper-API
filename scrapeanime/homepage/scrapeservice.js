@@ -45,31 +45,46 @@ async function scrapeSite(url, base, source, includeDetails = false) {
 
 	const items = [];
 
+	// Prioritize slider for hianime as it's typically the fastest and most reliable
 	try {
-		const top = await scrapeTopAiring($, resolveUrl, source, includeDetails);
-		if (top && top.length) items.push(...top);
-	} catch (e) { }
-
-	try {
-		const popular = await scrapeMostPopular($, resolveUrl, source, includeDetails);
-		if (popular && popular.length) items.push(...popular);
-	} catch (e) { }
-
-	try {
-		const fav = await scrapeMostFavorite($, resolveUrl, source, includeDetails);
-		if (fav && fav.length) items.push(...fav);
-	} catch (e) { }
-	try {
-		if (source !== '123anime') {
+		if (source === 'hianime') {
 			const slider = scrapeSlider($, resolveUrl, source);
 			if (slider && slider.length) items.push(...slider);
 		}
-	} catch (e) { }
+	} catch (e) { 
+		console.warn(`Slider scraping failed for ${source}:`, e.message);
+	}
 
+	// Run other scrapers with reduced priority
+	const scrapers = [
+		() => scrapeTopAiring($, resolveUrl, source, includeDetails),
+		() => scrapeMostPopular($, resolveUrl, source, includeDetails),
+		() => scrapeMostFavorite($, resolveUrl, source, includeDetails),
+		() => scrapeTrending($, resolveUrl, source, includeDetails)
+	];
+
+	// Process scrapers with timeout to prevent one slow scraper from blocking others
+	await Promise.allSettled(scrapers.map(async (scraper, index) => {
+		try {
+			const result = await Promise.race([
+				scraper(),
+				new Promise((_, reject) => setTimeout(() => reject(new Error('Scraper timeout')), 3000))
+			]);
+			if (result && result.length) items.push(...result);
+		} catch (e) {
+			console.warn(`Scraper ${index} failed for ${source}:`, e.message);
+		}
+	}));
+
+	// Add slider for non-hianime sources if we have space
 	try {
-		const trending = await scrapeTrending($, resolveUrl, source, includeDetails);
-		if (trending && trending.length) items.push(...trending);
-	} catch (e) { }
+		if (source !== 'hianime' && source !== '123anime' && items.length < 50) {
+			const slider = scrapeSlider($, resolveUrl, source);
+			if (slider && slider.length) items.push(...slider);
+		}
+	} catch (e) {
+		console.warn(`Secondary slider scraping failed for ${source}:`, e.message);
+	}
 
 	const seen = new Set();
 	const deduped = [];
