@@ -5,283 +5,253 @@ puppeteer.use(StealthPlugin());
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function scrapeAnimePaheIframe(url) {
+async function scrapeEpisodeUrls(animeUrl) {
     let browser = null;
-    let page = null;
-    
     try {
-        console.log('Launching browser...');
         browser = await puppeteer.launch({
-            headless: true, 
+            headless: true,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
+                '--no-zygote',
                 '--window-size=1280,720',
                 '--disable-blink-features=AutomationControlled',
-                '--disable-infobars',
-                '--disable-background-timer-throttling',
-                '--disable-renderer-backgrounding',
-                '--disable-backgrounding-occluded-windows',
-                '--disable-features=TranslateUI',
-                '--disable-extensions'
+                '--disable-infobars'
             ]
         });
 
-        page = await browser.newPage();
+        const page = await browser.newPage();
         
-        // Set user agent to avoid bot detection
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        // Set user agent to avoid detection
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
         
-        // Set viewport
-        await page.setViewport({ width: 1280, height: 720 });
-        
-        console.log('Navigating to:', url);
-        await page.goto(url, { 
-            waitUntil: 'networkidle0',
+        console.log(`Navigating to: ${animeUrl}`);
+        await page.goto(animeUrl, { 
+            waitUntil: 'networkidle2',
             timeout: 30000 
         });
-        
-        // Wait a bit for any dynamic content to load
-        await delay(3000);
-        
-        console.log('Looking for iframe and extracting page variables...');
-        
-        // Wait for iframe to be present
-        await page.waitForSelector('iframe', { timeout: 10000 });
-        
-        // Extract important variables from the page
-        const pageVariables = await page.evaluate(() => {
-            return {
-                session: typeof session !== 'undefined' ? session : null,
-                provider: typeof provider !== 'undefined' ? provider : null,
-                url: typeof url !== 'undefined' ? url : null
-            };
+
+        await delay(2000);
+
+        // Wait for episode list to load
+        await page.waitForSelector('.ss-list, .episode-list, .ssl-item', { timeout: 10000 }).catch(() => {
+            console.log('Episode list selector not found, trying alternative selectors...');
         });
-        
-        console.log('Extracted variables:', pageVariables);
-        
-        // Wait for potential dynamic loading of iframe src
-        await delay(5000);
-        
-        // Check if iframe src gets populated after JavaScript execution
-        let iframeData = await page.evaluate(() => {
-            const iframes = Array.from(document.querySelectorAll('iframe'));
-            return iframes.map((iframe, index) => ({
-                index,
-                src: iframe.src,
-                width: iframe.width || iframe.offsetWidth,
-                height: iframe.height || iframe.offsetHeight,
-                id: iframe.id,
-                className: iframe.className,
-                title: iframe.title,
-                allowfullscreen: iframe.allowFullscreen,
-                scrolling: iframe.scrolling
-            }));
-        });
-        
-        // If still no src, try to trigger any click events that might load the iframe
-        if (!iframeData.some(iframe => iframe.src)) {
-            console.log('Iframe src still empty, trying to interact with page elements...');
+
+        // Extract episode URLs from the episode list
+        const episodeData = await page.evaluate(() => {
+            const episodes = [];
             
-            // Look for play buttons or similar elements
-            const playElements = await page.$$('button, .play, .btn, [data-play]');
-            if (playElements.length > 0) {
-                try {
-                    await playElements[0].click();
-                    await delay(3000);
-                    
-                    // Re-check iframe data
-                    iframeData = await page.evaluate(() => {
-                        const iframes = Array.from(document.querySelectorAll('iframe'));
-                        return iframes.map((iframe, index) => ({
-                            index,
-                            src: iframe.src,
-                            width: iframe.width || iframe.offsetWidth,
-                            height: iframe.height || iframe.offsetHeight,
-                            id: iframe.id,
-                            className: iframe.className,
-                            title: iframe.title,
-                            allowfullscreen: iframe.allowFullscreen,
-                            scrolling: iframe.scrolling
-                        }));
-                    });
-                } catch (clickError) {
-                    console.log('Could not click play element:', clickError.message);
+            // Multiple selector strategies
+            const selectors = [
+                '.ssl-item a',
+                '.ss-list .ssl-item a',
+                '.episode-list a',
+                'a[href*="?ep="]',
+                'a[data-number]',
+                '.ep-item a',
+                '.episode a'
+            ];
+            
+            let episodeLinks = [];
+            
+            // Try each selector until we find episode links
+            for (const selector of selectors) {
+                episodeLinks = document.querySelectorAll(selector);
+                if (episodeLinks.length > 0) {
+                    console.log(`Found ${episodeLinks.length} episodes using selector: ${selector}`);
+                    break;
                 }
             }
-        }
-        
-        console.log('Found iframes:', JSON.stringify(iframeData, null, 2));
-        
-        if (iframeData.length === 0) {
-            throw new Error('No iframes found on the page');
-        }
-        
-        // Try to access the main video iframe (usually the largest or first one)
-        const videoIframe = iframeData.find(iframe => 
-            iframe.src && 
-            (iframe.src.includes('kwik') || 
-             iframe.src.includes('video') || 
-             iframe.allowfullscreen ||
-             iframe.width > 500)
-        ) || iframeData[0];
-        
-        console.log('Selected iframe:', videoIframe);
-        
-        // Get page content and iframe details
-        const pageContent = await page.evaluate(() => {
-            return {
-                title: document.title,
-                url: window.location.href,
-                html: document.documentElement.outerHTML.substring(0, 5000) // First 5000 chars
-            };
-        });
-        
-        // Try to access iframe content if possible, or use the extracted URL
-        let iframeContent = null;
-        const targetUrl = videoIframe.src || pageVariables.url;
-        
-        if (targetUrl) {
-            try {
-                console.log('Attempting to access video content from:', targetUrl);
-                const iframePage = await browser.newPage();
-                await iframePage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-                
-                // Set additional headers for kwik.cx
-                await iframePage.setExtraHTTPHeaders({
-                    'Referer': url,
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+            
+            // If no specific selectors work, try to find all links with episode patterns
+            if (episodeLinks.length === 0) {
+                const allLinks = document.querySelectorAll('a[href]');
+                episodeLinks = Array.from(allLinks).filter(link => {
+                    const href = link.getAttribute('href');
+                    return href && (href.includes('?ep=') || href.includes('/episode') || href.includes('data-number'));
                 });
-                
-                await iframePage.goto(targetUrl, { 
-                    waitUntil: 'networkidle0',
-                    timeout: 15000 
-                });
-                
-                await delay(3000);
-                
-                // Look for video players and streaming data
-                iframeContent = await iframePage.evaluate(() => {
-                    const videoElements = Array.from(document.querySelectorAll('video')).map(video => ({
-                        src: video.src,
-                        currentSrc: video.currentSrc,
-                        poster: video.poster,
-                        width: video.videoWidth,
-                        height: video.videoHeight,
-                        duration: video.duration,
-                        controls: video.controls,
-                        autoplay: video.autoplay,
-                        sources: Array.from(video.querySelectorAll('source')).map(source => ({
-                            src: source.src,
-                            type: source.type
-                        }))
-                    }));
-                    
-                    const sourceElements = Array.from(document.querySelectorAll('source')).map(source => ({
-                        src: source.src,
-                        type: source.type,
-                        media: source.media
-                    }));
-                    
-                    // Look for Plyr or other video player instances
-                    const plyrElements = Array.from(document.querySelectorAll('[data-plyr-provider], .plyr, #plyr')).map(el => ({
-                        id: el.id,
-                        className: el.className,
-                        dataProvider: el.getAttribute('data-plyr-provider'),
-                        dataPlyrConfig: el.getAttribute('data-plyr-config')
-                    }));
-                    
-                    // Extract any streaming URLs from script tags
-                    const scripts = Array.from(document.querySelectorAll('script')).map(script => ({
-                        src: script.src,
-                        content: script.innerHTML
-                    })).filter(script => script.content && (
-                        script.content.includes('.mp4') || 
-                        script.content.includes('.m3u8') || 
-                        script.content.includes('source') ||
-                        script.content.includes('video')
-                    ));
-                    
-                    // Look for any blob URLs or streaming links
-                    const allLinks = Array.from(document.querySelectorAll('a[href*=".mp4"], a[href*=".m3u8"]')).map(a => a.href);
-                    
-                    return {
-                        title: document.title,
-                        url: window.location.href,
-                        videoElements,
-                        sourceElements,
-                        plyrElements,
-                        streamingScripts: scripts,
-                        mediaLinks: allLinks,
-                        html: document.documentElement.outerHTML.substring(0, 5000)
-                    };
-                });
-                
-                await iframePage.close();
-            } catch (iframeError) {
-                console.log('Could not access iframe/video content:', iframeError.message);
+                console.log(`Found ${episodeLinks.length} episodes using pattern matching`);
             }
-        }
-        
-        return {
-            success: true,
-            pageData: pageContent,
-            pageVariables: pageVariables,
-            iframes: iframeData,
-            selectedIframe: videoIframe,
-            iframeContent: iframeContent,
-            timestamp: new Date().toISOString()
-        };
-        
+            
+            episodeLinks.forEach((link, index) => {
+                const href = link.getAttribute('href');
+                const title = link.getAttribute('title') || link.textContent.trim() || `Episode ${index + 1}`;
+                const episodeNumber = link.getAttribute('data-number') || link.getAttribute('data-id') || (index + 1);
+                
+                if (href) {
+                    episodes.push({
+                        episodeNumber: episodeNumber,
+                        title: title,
+                        url: href.startsWith('http') ? href : `https://animefrenzy.cc${href}`,
+                        relativeUrl: href
+                    });
+                }
+            });
+            
+            // Debug: return page structure if no episodes found
+            if (episodes.length === 0) {
+                const pageStructure = {
+                    episodes: episodes,
+                    allLinks: Array.from(document.querySelectorAll('a[href]')).slice(0, 10).map(a => ({
+                        href: a.getAttribute('href'),
+                        text: a.textContent.trim(),
+                        classes: a.className
+                    })),
+                    possibleEpisodeSections: Array.from(document.querySelectorAll('[class*="episode"], [class*="ep-"], [class*="ssl"]')).map(el => ({
+                        tagName: el.tagName,
+                        className: el.className,
+                        innerHTML: el.innerHTML.substring(0, 200)
+                    }))
+                };
+                console.log('Debug info:', JSON.stringify(pageStructure, null, 2));
+            }
+            
+            return episodes;
+        });
+
+        console.log(`Found ${episodeData.length} episodes:`);
+        episodeData.forEach((episode, index) => {
+            console.log(`${index + 1}. Episode ${episode.episodeNumber}: ${episode.title}`);
+            console.log(`   URL: ${episode.url}`);
+        });
+
+        return episodeData;
+
     } catch (error) {
-        console.error('Error scraping iframe:', error);
-        return {
-            success: false,
-            error: error.message,
-            timestamp: new Date().toISOString()
-        };
+        console.error('Error scraping episode URLs:', error);
+        throw error;
     } finally {
-        if (page) await page.close().catch(() => {});
-        if (browser) await browser.close().catch(() => {});
+        if (browser) {
+            await browser.close();
+        }
     }
 }
 
-// Check if episode ID is provided as command line argument
-const args = process.argv.slice(2);
-if (args.length === 0) {
-    console.error('Please provide an episode ID as argument');
-    console.log('Usage examples:');
-    console.log('  node test.js f8d3cb59e5dd69ffd4a37ae61732c7b369afeb18fe9adf7af04e9d9505c833b1');
-    console.log('  node test.js 93d389c8-1dbb-3b3e-3962-28abbfdd5567/f8d3cb59e5dd69ffd4a37ae61732c7b369afeb18fe9adf7af04e9d9505c833b1');
-    process.exit(1);
+// Function to scrape a specific episode page
+async function scrapeEpisodeDetails(episodeUrl) {
+    let browser = null;
+    try {
+        browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu'
+            ]
+        });
+
+        const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+        
+        console.log(`Scraping episode: ${episodeUrl}`);
+        await page.goto(episodeUrl, { 
+            waitUntil: 'networkidle2',
+            timeout: 30000 
+        });
+
+        await delay(2000);
+
+        // Extract episode details and streaming links
+        const episodeDetails = await page.evaluate(() => {
+            const details = {
+                title: '',
+                streamingLinks: [],
+                downloadLinks: []
+            };
+
+            // Get episode title
+            const titleElement = document.querySelector('h1, .title, .episode-title');
+            if (titleElement) {
+                details.title = titleElement.textContent.trim();
+            }
+
+            // Look for video sources/streaming links
+            const videoElements = document.querySelectorAll('video source, iframe');
+            videoElements.forEach(element => {
+                const src = element.getAttribute('src');
+                if (src) {
+                    details.streamingLinks.push(src);
+                }
+            });
+
+            // Look for download links
+            const downloadElements = document.querySelectorAll('a[href*="download"], a[download]');
+            downloadElements.forEach(element => {
+                const href = element.getAttribute('href');
+                if (href) {
+                    details.downloadLinks.push({
+                        url: href,
+                        text: element.textContent.trim()
+                    });
+                }
+            });
+
+            return details;
+        });
+
+        return episodeDetails;
+
+    } catch (error) {
+        console.error('Error scraping episode details:', error);
+        throw error;
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
 }
 
-let testUrl;
-const episodeId = args[0];
-
-if (episodeId.startsWith('http')) {
-    // Full URL provided
-    testUrl = episodeId;
-    console.log('Using full URL:', episodeId);
-} else if (episodeId.includes('/')) {
-    // Episode ID format: anime-id/session-id
-    testUrl = `https://animepahe.si/play/${episodeId}`;
-    console.log('Using episode ID:', episodeId);
-} else {
-    // Single session ID, use default anime ID
-    testUrl = `https://animepahe.si/play/93d389c8-1dbb-3b3e-3962-28abbfdd5567/${episodeId}`;
-    console.log('Using single session ID:', episodeId);
+// Main execution
+async function main() {
+    try {
+        // Example URL from your screenshot
+        const animeUrl = 'https://animefrenzy.cc/watch/one-punch-man-season-3-19932';
+        
+        console.log('Starting episode URL scraping...\n');
+        
+        // Scrape all episode URLs
+        const episodes = await scrapeEpisodeUrls(animeUrl);
+        
+        if (episodes.length > 0) {
+            console.log('\n--- Episode URLs scraped successfully ---');
+            console.log(`Total episodes found: ${episodes.length}`);
+            
+            // Example: Scrape details for the first episode
+            console.log('\n--- Scraping first episode details ---');
+            const firstEpisode = episodes[0];
+            const episodeDetails = await scrapeEpisodeDetails(firstEpisode.url);
+            
+            console.log('Episode Details:');
+            console.log(`Title: ${episodeDetails.title}`);
+            console.log(`Streaming Links: ${episodeDetails.streamingLinks.length}`);
+            console.log(`Download Links: ${episodeDetails.downloadLinks.length}`);
+            
+            if (episodeDetails.streamingLinks.length > 0) {
+                console.log('Streaming URLs:');
+                episodeDetails.streamingLinks.forEach((link, index) => {
+                    console.log(`  ${index + 1}. ${link}`);
+                });
+            }
+        }
+        
+    } catch (error) {
+        console.error('Main execution error:', error);
+    }
 }
 
-console.log('Starting iframe scraper test...');
-console.log('Target URL:', testUrl);
-scrapeAnimePaheIframe(testUrl)
-    .then(result => {
-        console.log('\n=== SCRAPING RESULTS ===');
-        console.log(JSON.stringify(result, null, 2));
-    })
-    .catch(error => {
-        console.error('Test failed:', error);
-    });
+// Export functions for use in other modules
+export { scrapeEpisodeUrls, scrapeEpisodeDetails };
+
+// Run if this file is executed directly
+if (process.argv[1] && import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`) {
+    main();
+}
+
+// Also run main if this is the main module
+if (import.meta.url.endsWith('test.js')) {
+    main();
+}

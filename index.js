@@ -20,7 +20,6 @@ import mostFavoriteRouter from './routes/most_favorite.js';
 import topAiringRouter from './routes/top_airing.js';
 import trendingRouter from './routes/trending.js';
 import sliderRouter from './routes/slider.js';
-import testRouter from './routes/test.js';
 
 dotenv.config();
 const app = express();
@@ -89,7 +88,6 @@ app.use('/overrated', overratedRouter);
 app.use('/most_popular', mostPopularRouter);
 app.use('/most_favorite', mostFavoriteRouter);
 app.use('/top_airing', topAiringRouter);
-app.use('/test', testRouter);
 
 const PORT = process.env.PORT || 5000;
 
