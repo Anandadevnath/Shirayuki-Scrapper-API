@@ -21,7 +21,7 @@ async function getBrowser() {
     browserLaunchPromise = (async () => {
       const { executablePath } = await import('puppeteer');
       const b = await puppeteer.launch({
-        headless: true,
+        headless: 'new',
         executablePath: executablePath(),
         args: [
           '--no-sandbox',
@@ -29,13 +29,16 @@ async function getBrowser() {
           '--disable-dev-shm-usage',
           '--disable-gpu',
           '--no-zygote',
+          '--single-process',
+          '--no-first-run',
           '--window-size=1280,720',
           '--disable-blink-features=AutomationControlled',
           '--disable-infobars',
           '--disable-background-timer-throttling',
           '--disable-renderer-backgrounding',
           '--disable-backgrounding-occluded-windows',
-          '--disable-features=TranslateUI'
+          '--disable-features=TranslateUI',
+          '--disable-extensions'
         ]
       });
       browserSingleton = b;
@@ -80,39 +83,45 @@ router.get('/:animetitle', async (req, res) => {
     // Set user agent to avoid detection
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
-    // Block unnecessary resources
+    // Block unnecessary resources for faster loading
     await page.setRequestInterception(true);
     page.on('request', (req) => {
       const resourceType = req.resourceType();
       const url = req.url();
-      if (['image', 'stylesheet', 'font', 'media'].includes(resourceType) || url.includes('ads') || url.includes('doubleclick') || url.includes('googlesyndication')) {
+      const blockedResourceTypes = ['image', 'stylesheet', 'font', 'media'];
+      const blockedUrls = ['ads', 'doubleclick', 'googlesyndication', 'googletagmanager', 'analytics'];
+      
+      if (blockedResourceTypes.includes(resourceType) || blockedUrls.some(blocked => url.includes(blocked))) {
         req.abort().catch(() => {});
       } else {
         req.continue().catch(() => {});
       }
     });
     
+    // Use networkidle0 for faster response on Render
     await page.goto(animeUrl, { 
-      waitUntil: 'domcontentloaded',
-      timeout: 20000 
+      waitUntil: 'networkidle0',
+      timeout: 15000 
     });
 
-    // Wait for episode list to load
-    await page.waitForSelector('.ssl-item a, a[href*="?ep="], .episode-list a', { timeout: 8000 }).catch(() => {
-      console.log('Episode list selector timeout, continuing with available content...');
-    });
+    // Wait for episode list - shorter timeout
+    const selectorFound = await page.waitForSelector('.ssl-item a, a[href*="?ep="], .episode-list a', { timeout: 5000 }).catch(() => false);
+    
+    if (!selectorFound) {
+      console.log(`⚠️ Episode selector timeout for ${animetitle}, attempting extraction anyway...`);
+    }
 
     // Extract episode URLs from the episode list
     const episodeData = await page.evaluate(() => {
       const episodes = [];
       
-      // Optimized selector - use the most common one first
-      let episodeLinks = document.querySelectorAll('.ssl-item a');
-      if (episodeLinks.length === 0) {
-        episodeLinks = document.querySelectorAll('a[href*="?ep="]');
-      }
-      if (episodeLinks.length === 0) {
-        episodeLinks = document.querySelectorAll('.episode-list a');
+      // Try selectors in order of likelihood
+      const selectors = ['.ssl-item a', 'a[href*="?ep="]', '.episode-list a'];
+      let episodeLinks = [];
+      
+      for (const selector of selectors) {
+        episodeLinks = document.querySelectorAll(selector);
+        if (episodeLinks.length > 0) break;
       }
       
       episodeLinks.forEach((link, index) => {
@@ -155,6 +164,7 @@ router.get('/:animetitle', async (req, res) => {
 
   } catch (error) {
     const duration = (Date.now() - start) / 1000;
+    console.error('Watch error:', error.message);
     res.status(500).json({
       success: false,
       error: error.message,
