@@ -20,6 +20,7 @@ import mostFavoriteRouter from './routes/most_favorite.js';
 import topAiringRouter from './routes/top_airing.js';
 import trendingRouter from './routes/trending.js';
 import sliderRouter from './routes/slider.js';
+import watchRouter from './routes/watch.js';
 
 dotenv.config();
 const app = express();
@@ -61,6 +62,7 @@ app.get('/', (req, res) => {
             { name: "Search Suggestions", path: "/search/suggestions?q=demon%20slayer" },
             { name: "Streaming url", path: "/episode-stream?id=one-piece-dub&ep=1" },
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
+            { name: "Watch Anime URL", path: "/watch/one-piece-100" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "Schedule from DB", path: "/db-schedule" },
         ]
@@ -88,6 +90,7 @@ app.use('/overrated', overratedRouter);
 app.use('/most_popular', mostPopularRouter);
 app.use('/most_favorite', mostFavoriteRouter);
 app.use('/top_airing', topAiringRouter);
+app.use('/watch', watchRouter);
 
 const PORT = process.env.PORT || 5000;
 
