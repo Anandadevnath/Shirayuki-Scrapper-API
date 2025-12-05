@@ -100,7 +100,7 @@ router.get('/:animetitle', async (req, res) => {
     
     // Use networkidle0 for faster response on Render
     await page.goto(animeUrl, { 
-      waitUntil: 'networkidle0',
+      waitUntil: 'domcontentloaded',
       timeout: 15000 
     });
 
