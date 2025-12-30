@@ -37,7 +37,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
     res.json({
         message: " Welcome to Shirayuki Anime Scraper!",
-        version: "2.0.0",
+        version: "1.0.0",
         endpoints: [
             {
                 home: [
