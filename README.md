@@ -485,16 +485,12 @@ You can deploy it on any cloud service that supports Puppeteer
 For most platforms, add these environment variables:
 
 ```bash
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 NODE_ENV=production
-PORT=5000
-PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage
+MONGODB_URI= MongoDB Configuration
 ```
 
 
 ## �📄 License
 
 This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This API is for educational and personal use only. Please respect the terms of service of the scraped websites and use responsibly.
