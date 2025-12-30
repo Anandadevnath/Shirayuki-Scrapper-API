@@ -1,57 +1,127 @@
 import express from 'express';
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import axios from 'axios';
+import { load } from 'cheerio';
 import simpleCache from '../service/simpleCache.js';
-
-puppeteer.use(StealthPlugin());
 
 const router = express.Router();
 const watchCache = simpleCache.createNamespace('watch', 1000 * 60 * 30);
 
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Base URLs
+const ANIME_BASE_URL = 'https://hianime.to';
+const AJAX_URL = 'https://hianime.to/ajax';
 
-let browserSingleton = null;
-let browserLaunchPromise = null;
+router.get('/api/v2/anime/:animeId/episodes', async (req, res) => {
+  const start = Date.now();
+  
+  try {
+    const { animeId } = req.params;
 
-async function getBrowser() {
-  if (browserSingleton && browserSingleton.isConnected?.()) {
-    return browserSingleton;
-  }
-  if (!browserLaunchPromise) {
-    browserLaunchPromise = (async () => {
-      const { executablePath } = await import('puppeteer');
-      const b = await puppeteer.launch({
-        headless: 'new',
-        executablePath: executablePath(),
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-zygote',
-          '--single-process',
-          '--no-first-run',
-          '--window-size=1280,720',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-infobars',
-          '--disable-background-timer-throttling',
-          '--disable-renderer-backgrounding',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-features=TranslateUI',
-          '--disable-extensions'
-        ]
+    if (!animeId || animeId.trim() === '') {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        error: 'Anime ID parameter is required'
       });
-      browserSingleton = b;
-      return browserSingleton;
-    })();
-  }
-  return browserLaunchPromise;
-}
+    }
 
-// GET /watch/:animetitle
+    if (animeId.indexOf('-') === -1) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        error: 'Invalid anime ID format'
+      });
+    }
+
+    // Check cache first
+    const cached = watchCache.get(animeId);
+    if (cached) {
+      console.log(`📦 Cache hit for ${animeId}`);
+      return res.json({
+        status: 200,
+        data: cached,
+        extraction_time_seconds: (Date.now() - start) / 1000,
+        cached: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Extract the numeric ID from anime slug (e.g., "one-piece-100" -> "100")
+    const numericId = animeId.split('-').pop();
+
+    // Make AJAX request to get episodes HTML
+    const episodesAjax = await axios.get(
+      `${AJAX_URL}/v2/episode/list/${numericId}`,
+      {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Referer': `${ANIME_BASE_URL}/watch/${animeId}`,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      }
+    );
+
+    // Load the HTML response with Cheerio
+    const $ = load(episodesAjax.data.html);
+
+    // Extract episodes
+    const episodes = [];
+    $('.detail-infor-content .ss-list a').each((_, el) => {
+      const $el = $(el);
+      episodes.push({
+        title: $el.attr('title')?.trim() || null,
+        episodeId: $el.attr('href')?.split('/')?.pop() || null,
+        number: Number($el.attr('data-number')),
+        isFiller: $el.hasClass('ssl-item-filler')
+      });
+    });
+
+    const result = {
+      totalEpisodes: episodes.length,
+      episodes: episodes
+    };
+
+    // Cache the result
+    watchCache.set(animeId, result);
+    
+    const duration = (Date.now() - start) / 1000;
+
+    res.json({
+      status: 200,
+      data: result,
+      extraction_time_seconds: duration,
+      cached: false,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    const duration = (Date.now() - start) / 1000;
+    console.error('Watch error:', error.message);
+    
+    // Handle specific error cases
+    let statusCode = 500;
+    let errorMessage = error.message;
+    
+    if (error.response) {
+      statusCode = error.response.status;
+      errorMessage = `Failed to fetch episodes: ${error.response.statusText}`;
+    }
+    
+    res.status(statusCode).json({
+      status: statusCode,
+      success: false,
+      error: errorMessage,
+      extraction_time_seconds: duration,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * GET /watch/:animetitle (Legacy endpoint - kept for backward compatibility)
+ * Note: This uses the old AnimeFrenzy scraping approach
+ */
 router.get('/:animetitle', async (req, res) => {
   const start = Date.now();
-  let page = null;
   
   try {
     const { animetitle } = req.params;
@@ -63,103 +133,12 @@ router.get('/:animetitle', async (req, res) => {
       });
     }
 
-    // Check cache first
-    const cached = watchCache.get(animetitle);
-    if (cached) {
-      console.log(`📦 Cache hit for ${animetitle}`);
-      return res.json({
-        ...cached,
-        extraction_time_seconds: (Date.now() - start) / 1000,
-        cached: true,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    const animeUrl = `https://animefrenzy.cc/watch/${animetitle}`;
-    const browser = await getBrowser();
-
-    page = await browser.newPage();
-    
-    // Set user agent to avoid detection
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    
-    // Block unnecessary resources for faster loading
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      const resourceType = req.resourceType();
-      const url = req.url();
-      const blockedResourceTypes = ['image', 'stylesheet', 'font', 'media'];
-      const blockedUrls = ['ads', 'doubleclick', 'googlesyndication', 'googletagmanager', 'analytics'];
-      
-      if (blockedResourceTypes.includes(resourceType) || blockedUrls.some(blocked => url.includes(blocked))) {
-        req.abort().catch(() => {});
-      } else {
-        req.continue().catch(() => {});
-      }
-    });
-    
-    // Use networkidle0 for faster response on Render
-    await page.goto(animeUrl, { 
-      waitUntil: 'domcontentloaded',
-      timeout: 15000 
-    });
-
-    // Wait for episode list - shorter timeout
-    const selectorFound = await page.waitForSelector('.ssl-item a, a[href*="?ep="], .episode-list a', { timeout: 5000 }).catch(() => false);
-    
-    if (!selectorFound) {
-      console.log(`⚠️ Episode selector timeout for ${animetitle}, attempting extraction anyway...`);
-    }
-
-    // Extract episode URLs from the episode list
-    const episodeData = await page.evaluate(() => {
-      const episodes = [];
-      
-      // Try selectors in order of likelihood
-      const selectors = ['.ssl-item a', 'a[href*="?ep="]', '.episode-list a'];
-      let episodeLinks = [];
-      
-      for (const selector of selectors) {
-        episodeLinks = document.querySelectorAll(selector);
-        if (episodeLinks.length > 0) break;
-      }
-      
-      episodeLinks.forEach((link, index) => {
-        const href = link.getAttribute('href');
-        const title = link.getAttribute('title') || link.textContent.trim() || `Episode ${index + 1}`;
-        const episodeNumber = link.getAttribute('data-number') || (index + 1);
-        
-        if (href) {
-          episodes.push({
-            episodeNumber: episodeNumber,
-            title: title,
-            url: href.startsWith('http') ? href : `https://animefrenzy.cc${href}`,
-            relativeUrl: href
-          });
-        }
-      });
-      
-      return episodes;
-    });
-
-    const result = {
-      success: true,
-      animetitle: animetitle,
-      sourceUrl: animeUrl,
-      totalEpisodes: episodeData.length,
-      episodes: episodeData
-    };
-
-    // Cache the result
-    watchCache.set(animetitle, result);
-    
-    const duration = (Date.now() - start) / 1000;
-
-    res.json({
-      ...result,
-      extraction_time_seconds: duration,
-      cached: false,
-      timestamp: new Date().toISOString()
+    // Redirect to new endpoint with deprecation notice
+    return res.status(301).json({
+      success: false,
+      message: 'This endpoint is deprecated. Please use /api/v2/anime/:animeId/episodes instead',
+      new_endpoint: `/api/v2/anime/${animetitle}/episodes`,
+      example: '/api/v2/anime/one-piece-100/episodes'
     });
 
   } catch (error) {
@@ -171,14 +150,6 @@ router.get('/:animetitle', async (req, res) => {
       extraction_time_seconds: duration,
       timestamp: new Date().toISOString()
     });
-  } finally {
-    if (page) {
-      try {
-        await page.close();
-      } catch (e) {
-        console.error('Error closing page:', e);
-      }
-    }
   }
 });
 

@@ -37,7 +37,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
     res.json({
         message: " Welcome to Shirayuki Anime Scraper!",
-        version: "1.0.0",
+        version: "2.0.0",
         endpoints: [
             {
                 home: [
@@ -62,7 +62,8 @@ app.get('/', (req, res) => {
             { name: "Search Suggestions", path: "/search/suggestions?q=demon%20slayer" },
             { name: "Streaming url", path: "/episode-stream?id=one-piece-dub&ep=1" },
             { name: "AnimeDetails by title", path: "/anime/one-piece" },
-            { name: "Watch Anime URL", path: "/watch/one-piece-100" },
+            { name: "Get Anime Episodes (NEW - Cheerio)", path: "/api/v2/anime/one-piece-100/episodes" },
+            { name: "Watch Anime URL (Deprecated)", path: "/watch/one-piece-100" },
             { name: "Anime Schedule", path: "/schedule" },
             { name: "Schedule from DB", path: "/db-schedule" },
         ]
@@ -90,6 +91,9 @@ app.use('/overrated', overratedRouter);
 app.use('/most_popular', mostPopularRouter);
 app.use('/most_favorite', mostFavoriteRouter);
 app.use('/top_airing', topAiringRouter);
+// New v2 API endpoint for anime episodes (uses Cheerio)
+app.use('/', watchRouter);
+// Legacy endpoint for backward compatibility
 app.use('/watch', watchRouter);
 
 const PORT = process.env.PORT || 5000;
