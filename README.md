@@ -20,35 +20,6 @@ It is a anime scraping API that provides anime information, streaming links, and
 - 📖 Detailed anime information
 - ⚡ Fast and reliable scraping
 
-## 🚀 Installation
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/Anandadevnath/Shirayuki-Scrapper-API.git
-cd Shirayuki-Scrapper-API
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Start the server:
-
-```bash
-npm start
-```
-
-The API will be available at `http://localhost:5000` by default. You can override the port with the `PORT` environment variable.
-
-## 🎯 Usage
-
-The API provides RESTful endpoints for accessing anime data. All responses are in JSON format.
-
-Base URL: `http://localhost:5000`
-
 ## 📍 API Endpoints
 
 ### 🏠 Root & Homepage
@@ -519,14 +490,6 @@ PORT=5000
 PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage
 ```
 
-### 🐳 Docker Deployment
-
-The included `Dockerfile` is optimized for cloud deployment:
-
-```bash
-docker build -t shirayuki-api .
-docker run -p 5000:5000 shirayuki-api
-```
 
 ## �📄 License
 
@@ -535,12 +498,3 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 ## ⚠️ Disclaimer
 
 This API is for educational and personal use only. Please respect the terms of service of the scraped websites and use responsibly.
-
-## 🔗 Links
-
-- [GitHub Repository](https://github.com/Anandadevnath/Shirayuki-Scrapper-API)
-- [Issues](https://github.com/Anandadevnath/Shirayuki-Scrapper-API/issues)
-
----
-
-Made with ❤️ by the Shirayuki team
